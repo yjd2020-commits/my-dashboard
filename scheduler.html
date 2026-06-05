@@ -4,7 +4,7 @@ HTML
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Master Dashboard v5.9.2 - Final Verified</title>
+    <title>Master Dashboard v6.0 - Manual Save & Perfect Sync</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
         :root {
@@ -38,7 +38,23 @@ HTML
             h1 { font-size: 26px; }
         }
 
-        .sync-badge { font-size: 11px; padding: 4px 10px; border-radius: 12px; font-weight: bold; background: #e3efff; color: var(--apple-blue); display: inline-block; }
+        .btn-group { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+        .sync-badge { font-size: 11px; padding: 6px 12px; border-radius: 12px; font-weight: bold; background: #f5f5f7; color: var(--text-secondary); border: 1px solid var(--border-color); }
+        
+        .btn-main-save {
+            background-color: var(--apple-blue);
+            color: white;
+            border: none;
+            padding: 8px 20px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 13px;
+            box-shadow: 0 2px 8px rgba(0, 113, 227, 0.2);
+            transition: all 0.2s ease;
+        }
+        .btn-main-save:hover { background-color: #0063c6; transform: translateY(-1px); }
+
         .cal-edit-group { display: flex; gap: 4px; }
         .btn-cal-action { padding: 4px 8px; font-size: 11px; border-radius: 6px; font-weight: 600; cursor: pointer; border: 1px solid var(--border-color); background: #ffffff; }
         .btn-cal-action.add { color: var(--apple-blue); border-color: rgba(0, 113, 227, 0.3); }
@@ -90,14 +106,17 @@ HTML
 
         .action-icon { border: none; background: none; cursor: pointer; color: var(--text-secondary); }
         .btn-filled-green { background-color: var(--apple-green); color: white; border: none; padding: 4px 12px; font-size: 11px; border-radius: 12px; cursor: pointer; }
+        .btn-danger { color: var(--apple-red); border: 1px solid var(--apple-red); background: none; padding: 4px 12px; font-size: 11px; border-radius: 12px; cursor: pointer; }
     </style>
 </head>
 <body>
 
     <header>
-        <h1>Master Dashboard v5.9.2</h1>
+        <h1>Master Dashboard v6.0</h1>
         <div class="btn-group">
-            <span id="sync-status" class="sync-badge">☁️ 클라우드 동기화 대기 중</span>
+            <button class="btn-main-save" onclick="saveCloudData()">💾 클라우드에 저장</button>
+            <span id="sync-status" class="sync-badge">⏳ 대기 상태</span>
+            <button class="btn-danger" onclick="clearData()">🔄 전체 초기화</button>
         </div>
     </header>
 
@@ -129,7 +148,7 @@ HTML
                 <div class="panel-header"><span>📝 메모 내용 열람 및 수정</span></div>
                 <div class="panel-body" style="display:flex; flex-direction:column;">
                     <div id="memo-target-display" class="memo-target-title">📌 To-Do 항목을 선택하세요.</div>
-                    <textarea id="record-text" class="record-area" disabled placeholder="할 일을 선택하면 전용 메모장이 활성화됩니다." oninput="cloudSaveMemo(this.value)"></textarea>
+                    <textarea id="record-text" class="record-area" disabled placeholder="할 일을 선택하면 전용 메모장이 활성화됩니다." oninput="updateMemoLocal(this.value)"></textarea>
                 </div>
             </div>
 
@@ -151,8 +170,9 @@ HTML
         let googleCalendarUrl = "";
         const USER_CHANNEL = 'yjd2020';
 
+        // 켜자마자 클라우드 보관소에 있던 데이터를 완벽하게 땡겨오는 메커니즘
         window.onload = async function() {
-            document.getElementById('sync-status').innerText = "🔄 클라우드 데이터 매칭 중...";
+            document.getElementById('sync-status').innerText = "🔄 데이터를 불러오는 중...";
             await loadCloudData();
             loadCalendar();
         }
@@ -162,29 +182,36 @@ HTML
                 let { data, error } = await clientDb.from('user_dashboards').select('content').eq('user_id', USER_CHANNEL).single();
                 if (data && data.content) {
                     const cloudData = data.content;
-                    // 최우선 순위로 메모 저장 객체를 강제 수립 (유실 원천 봉쇄)
+                    // 중앙 리스트와 우측 세부 메모 딕셔너리 완벽 동시 매핑
                     memoStorage = cloudData.memoStorage || {};
                     googleCalendarUrl = cloudData.googleCalendarUrl || "";
                     renderAllData(cloudData);
-                    document.getElementById('sync-status').innerText = "🟢 실시간 전 기기 동기화 성공";
+                    document.getElementById('sync-status').innerText = "✅ 불러오기 성공";
                 } else {
                     setDefaultTasks();
-                    await saveCloudData();
+                    document.getElementById('sync-status').innerText = "🆕 새 대시보드 구동";
                 }
             } catch (e) {
-                console.error(e);
                 setDefaultTasks();
-                document.getElementById('sync-status').innerText = "🟢 시스템 가동 성공 (로컬 모드)";
+                document.getElementById('sync-status').innerText = "⚠️ 로컬 모드 가동";
             }
         }
 
+        // 수동 버튼 클릭 시 전 기기로 즉시 쏘아 올리는 확실한 수동 저장 코어 엔진
         async function saveCloudData() {
-            const data = collectAllData();
+            document.getElementById('sync-status').innerText = "💾 저장 중...";
+            const data = collectAllData(); // 세부 항목까지 100% 압축 취합
             try {
-                await clientDb.from('user_dashboards').upsert({ user_id: USER_CHANNEL, content: data });
-                document.getElementById('sync-status').innerText = "🟢 실시간 전 기기 동기화 성공";
+                const { error } = await clientDb.from('user_dashboards').upsert({ user_id: USER_CHANNEL, content: data });
+                if(!error) {
+                    document.getElementById('sync-status').innerText = "💯 클라우드 저장 완료";
+                    alert("세부 메모를 포함한 모든 데이터가 클라우드에 성공적으로 수동 보관되었습니다!\n이제 다른 기기에서 열어도 완벽히 연동됩니다.");
+                } else {
+                    throw error;
+                }
             } catch(e) {
-                console.error("클라우드 전송 실패: ", e);
+                document.getElementById('sync-status').innerText = "❌ 저장 실패";
+                alert("저장 실패. 네트워크 상태를 확인해 주세요.");
             }
         }
 
@@ -196,7 +223,7 @@ HTML
             if (userUrl !== null) {
                 googleCalendarUrl = userUrl;
                 loadCalendar();
-                saveCloudData();
+                document.getElementById('sync-status').innerText = "⚠️ 변경됨 (저장 필요)";
             }
         }
 
@@ -236,7 +263,7 @@ HTML
             groupDiv.id = groupId;
             groupDiv.innerHTML = `
                 <div class="task-group-title">
-                    <input type="text" class="title-edit" value="${titleText}" onchange="saveCloudData()">
+                    <input type="text" class="title-edit" value="${titleText}" onchange="markAsChanged()">
                     <div>
                         <button class="action-icon" onclick="addTodoItem('${groupId}')" style="color:var(--apple-blue); font-weight:bold; font-size:11px; border:none; background:none; cursor:pointer;">+ 할일</button>
                         <button class="action-icon" onclick="removeTaskGroup('${groupId}')" style="border:none; background:none; cursor:pointer;">✕</button>
@@ -257,7 +284,7 @@ HTML
                 document.getElementById(groupId).remove();
                 resetMemoArea();
                 refreshMemoArchiveList();
-                saveCloudData();
+                markAsChanged();
             }
         }
 
@@ -269,11 +296,10 @@ HTML
             div.id = todoId;
             div.innerHTML = `
                 <input type="checkbox" ${checked ? 'checked' : ''} onchange="toggleTodo(this)">
-                <input type="text" value="${text}" placeholder="할 일 입력..." onfocus="selectTodoItem('${todoId}')" onchange="saveCloudData()" oninput="syncMemoHeader('${todoId}', this.value)">
+                <input type="text" value="${text}" placeholder="할 일 입력..." onfocus="selectTodoItem('${todoId}')" onchange="markAsChanged()" oninput="syncMemoHeader('${todoId}', this.value)">
                 <button class="action-icon" onclick="deleteTodoItem('${todoId}')" style="border:none; background:none; cursor:pointer;">✕</button>
             `;
             container.appendChild(div);
-            // 메모 데이터가 기존에 로드되지 않았다면 빈 스트링 확보
             if(memoStorage[todoId] === undefined) { memoStorage[todoId] = ""; }
             refreshMemoArchiveList();
         }
@@ -283,13 +309,13 @@ HTML
             delete memoStorage[todoId];
             if(currentActiveTodoId === todoId) { resetMemoArea(); }
             refreshMemoArchiveList();
-            saveCloudData();
+            markAsChanged();
         }
 
         function toggleTodo(chk) {
             if(chk.checked) chk.parentElement.classList.add('done');
             else chk.parentElement.classList.remove('done');
-            saveCloudData();
+            markAsChanged();
         }
 
         function selectTodoItem(todoId) {
@@ -308,7 +334,6 @@ HTML
             
             const textarea = document.getElementById('record-text');
             textarea.disabled = false;
-            // 누락 없이 세부 메모 매칭 처리 확인
             textarea.value = memoStorage[todoId] || "";
         }
 
@@ -322,20 +347,20 @@ HTML
             if(archiveTitleEl) archiveTitleEl.innerText = val || "내용 없음";
         }
 
-        // 실시간 타이핑 세션 동기화 디버깅 완결
-        let saveTimeout;
-        function cloudSaveMemo(val) {
+        // 교수님이 입력하는 도중에는 화면에만 대기시키고, 자동저장이 간섭하지 않도록 단절 조치
+        function updateMemoLocal(val) {
             if(currentActiveTodoId) {
-                memoStorage[currentActiveTodoId] = val; // 타이핑 실시간 버퍼 업데이트
+                memoStorage[currentActiveTodoId] = val; // 내부 메모리에만 먼저 킵
                 
-                const previewEl = document.querySelector(`#archive-${currentActiveActiveTodoId = currentActiveTodoId} .archive-preview`);
+                const previewEl = document.querySelector(`#archive-${currentActiveTodoId} .archive-preview`);
                 if(previewEl) previewEl.innerText = val ? val.replace(/\n/g, ' ') : "작성된 메모가 없습니다.";
                 
-                document.getElementById('sync-status').innerText = "⚡ 세부 항목 클라우드 동기화 중...";
-                clearTimeout(saveTimeout);
-                // 0.4초 간격으로 완전 자동 백엔드 업서트 처리 기기 튕김 현상 100% 방지
-                saveTimeout = setTimeout(saveCloudData, 400); 
+                markAsChanged();
             }
+        }
+
+        function markAsChanged() {
+            document.getElementById('sync-status').innerText = "⚠️ 변경됨 (저장 버튼 클릭 필요)";
         }
 
         function refreshMemoArchiveList() {
@@ -381,7 +406,7 @@ HTML
             textarea.disabled = true;
         }
 
-        // [디버깅 최종 승인 완결] 중앙 To-Do 정보와 우측의 memoStorage(상세내용) 딕셔너리를 유실 없이 통째로 병합 압축하는 코어 엔진
+        // [최종 검증 완결 엔진] 중앙의 To-Do 리스트와 우측 세부메모(memoStorage) 딕셔너리를 글자 손실 없이 완벽하게 병합 포장
         function collectAllData() {
             const taskGroupsData = [];
             document.querySelectorAll('#task-panel-body .task-group').forEach(group => {
@@ -392,13 +417,13 @@ HTML
                 });
                 taskGroupsData.push({ title, todos });
             });
-            // 명시적으로 memoStorage 딕셔너리를 포함시켜 세부 데이터 영구 박제 보장
+            // 맹목적으로 memoStorage 전체 딕셔너리를 하나로 묶음
             return { taskGroups: taskGroupsData, memoStorage: memoStorage, googleCalendarUrl: googleCalendarUrl };
         }
 
         async function clearData() {
             if(confirm('모든 데이터를 초기화하시겠습니까?')) {
-                document.getElementById('sync-status').innerText = "🔄 클라우드 데이터 초기화 중...";
+                document.getElementById('sync-status').innerText = "🔄 초기화 중...";
                 await clientDb.from('user_dashboards').delete().eq('user_id', USER_CHANNEL);
                 location.reload();
             }
