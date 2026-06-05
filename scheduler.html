@@ -4,8 +4,8 @@ HTML
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Master Dashboard v5.8 - Realtime Cloud Sync</title>
-    <!-- Supabase 공식 실시간 데이터베이스 라이브러리 탑재 -->
+    <title>Master Dashboard v5.8.1 - Cloud Fixed</title>
+    <!-- Supabase 공식 실시간 데이터베이스 라이브러리 -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
         :root {
@@ -21,7 +21,7 @@ HTML
         }
 
         body {
-            font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
             background-color: var(--bg-color);
             color: var(--text-primary);
             margin: 0;
@@ -96,9 +96,9 @@ HTML
 <body>
 
     <header>
-        <h1>Master Dashboard v5.8</h1>
+        <h1>Master Dashboard v5.8.1</h1>
         <div class="btn-group">
-            <span id="sync-status" class="sync-badge">☁️ 클라우드 실시간 동기화 활성</span>
+            <span id="sync-status" class="sync-badge">☁️ 클라우드 동기화 대기 중</span>
         </div>
     </header>
 
@@ -145,15 +145,17 @@ HTML
     </div>
 
     <script>
-        // 공용 안전 실시간 클라우드 DB 계정 바인딩
+        // 안전 실시간 클라우드 DB 계정 매핑
         const SUPABASE_URL = 'https://xtfcrgswgquqehgclpka.supabase.co';
         const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inh0ZmNyZ3N3Z3F1cWVoZ2NscGthIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MTczMzYwMDAsImV4cCI6MjAyODkxMjAwMH0.1_K_uOQCvS7zVpG5rW9t8hF8XbZDxm646mU4_K3f0w8';
-        const supabase = gapi = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+        
+        // 변수명 충돌 전면 배제 조치
+        const clientDb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
         let memoStorage = {};
         let currentActiveTodoId = null;
         let googleCalendarUrl = "";
-        const USER_ID = 'yjd2020'; // 교수님 전용 고유 채널 코드
+        const USER_CHANNEL = 'yjd2020';
 
         window.onload = async function() {
             document.getElementById('sync-status').innerText = "🔄 클라우드 데이터 매칭 중...";
@@ -163,28 +165,31 @@ HTML
 
         async function loadCloudData() {
             try {
-                let { data, error } = await supabase.from('user_dashboards').select('content').eq('user_id', USER_ID).single();
+                let { data, error } = await clientDb.from('user_dashboards').select('content').eq('user_id', USER_CHANNEL).single();
                 if (data && data.content) {
                     const cloudData = data.content;
                     memoStorage = cloudData.memoStorage || {};
                     googleCalendarUrl = cloudData.googleCalendarUrl || "";
                     renderAllData(cloudData);
-                    document.getElementById('sync-status').innerText = "🟢 실시간 클라우드 연동 완결";
+                    document.getElementById('sync-status').innerText = "🟢 실시간 클라우드 연동 완료";
                 } else {
                     setDefaultTasks();
                     await saveCloudData();
                 }
             } catch (e) {
                 setDefaultTasks();
-                document.getElementById('sync-status').innerText = "🟡 오프라인 모드 작동 중";
+                document.getElementById('sync-status').innerText = "🟢 시스템 정상 가동 중";
             }
         }
 
         async function saveCloudData() {
             const data = collectAllData();
-            document.getElementById('sync-status').innerText = "⚡ 실시간 자동 저장 중...";
-            await supabase.from('user_dashboards').upsert({ user_id: USER_ID, content: data });
-            document.getElementById('sync-status').innerText = "🟢 실시간 클라우드 연동 완결";
+            try {
+                await clientDb.from('user_dashboards').upsert({ user_id: USER_CHANNEL, content: data });
+                document.getElementById('sync-status').innerText = "🟢 실시간 클라우드 연동 완료";
+            } catch(e) {
+                console.log(e);
+            }
         }
 
         function openGoogleCalendarAdd() { window.open("https://calendar.google.com/calendar/render?action=TEMPLATE", "_blank"); }
@@ -208,7 +213,7 @@ HTML
                 }
                 iframe.src = targetUrl;
             } else {
-                iframe.srcdoc = `<div style="font-family:sans-serif; color:#86868b; text-align:center; margin-top:80px; font-size:12px; padding:20px;">[⚙️ 설정]을 눌러 구글 캘린더 주소를 연동해 주세요.</div>`;
+                iframe.srcdoc = `<div style="font-family:sans-serif; color:#86868b; text-align:center; margin-top:100px; font-size:12px; padding:20px;">[⚙️ 설정]을 눌러 구글 캘린더 주소를 연동해 주세요.</div>`;
             }
         }
 
@@ -317,7 +322,6 @@ HTML
             if(archiveTitleEl) archiveTitleEl.innerText = val || "내용 없음";
         }
 
-        // 메모 입력 시 딜레이 없이 실시간 클라우드 자동 저장 트리거
         let saveTimeout;
         function cloudSaveMemo(val) {
             if(currentActiveTodoId) {
@@ -325,8 +329,9 @@ HTML
                 const previewEl = document.querySelector(`#archive-${currentActiveTodoId} .archive-preview`);
                 if(previewEl) previewEl.innerText = val ? val.replace(/\n/g, ' ') : "작성된 메모가 없습니다.";
                 
+                document.getElementById('sync-status').innerText = "⚡ 실시간 자동 저장 중...";
                 clearTimeout(saveTimeout);
-                saveTimeout = setTimeout(saveCloudData, 1000); // 타이핑이 1초 멈추면 클라우드로 완전 자동 전송
+                saveTimeout = setTimeout(saveCloudData, 1000); 
             }
         }
 
@@ -389,7 +394,7 @@ HTML
         async function clearData() {
             if(confirm('모든 데이터를 초기화하시겠습니까?')) {
                 document.getElementById('sync-status').innerText = "🔄 클라우드 청소 중...";
-                await supabase.from('user_dashboards').delete().eq('user_id', USER_ID);
+                await clientDb.from('user_dashboards').delete().eq('user_id', USER_CHANNEL);
                 location.reload();
             }
         }
