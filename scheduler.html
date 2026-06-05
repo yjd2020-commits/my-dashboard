@@ -4,22 +4,18 @@ HTML
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Master Dashboard v5.6 - Quick Google Edit</title>
+    <title>Master Dashboard v5.7 - Mobile Optimized</title>
     <!-- SheetJS 라이브러리 (엑셀 연동용) -->
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <style>
         :root {
-            /* Apple 시스템 디자인 컬러 설정 */
             --bg-color: #f5f5f7;
             --card-bg: #ffffff;
             --text-primary: #1d1d1f;
             --text-secondary: #86868b;
-            
             --apple-blue: #0071e3;
             --apple-green: #34c759;
             --apple-red: #ff3b30;
-            --apple-gray: #f5f5f7;
-            
             --border-color: #d2d2d7;
             --radius-sf: 12px;
         }
@@ -29,37 +25,43 @@ HTML
             background-color: var(--bg-color);
             color: var(--text-primary);
             margin: 0;
-            padding: 30px;
+            padding: 16px; /* 모바일 대응 패딩 축소 */
             letter-spacing: -0.02em;
             -webkit-font-smoothing: antialiased;
         }
 
         header {
             display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding-bottom: 24px;
-            margin-bottom: 24px;
+            flex-direction: column; /* 모바일에서 세로 배치 */
+            gap: 12px;
+            padding-bottom: 16px;
+            margin-bottom: 16px;
             border-bottom: 1px solid var(--border-color);
         }
 
-        h1 { margin: 0; font-size: 26px; font-weight: 600; letter-spacing: -0.03em; }
+        @media (min-width: 768px) {
+            body { padding: 30px; }
+            header { flex-direction: row; justify-content: space-between; align-items: center; padding-bottom: 24px; margin-bottom: 24px; }
+        }
 
-        .btn-group { display: flex; gap: 8px; flex-wrap: wrap; }
+        h1 { margin: 0; font-size: 22px; font-weight: 600; letter-spacing: -0.03em; }
+        @media (min-width: 768px) { h1 { font-size: 26px; } }
 
-        /* Apple 스타일 버튼 서식 */
+        .btn-group { display: flex; gap: 6px; flex-wrap: wrap; }
+
         .btn {
             background-color: var(--card-bg);
             color: var(--apple-blue);
             border: 1px solid var(--apple-blue);
-            padding: 8px 16px;
+            padding: 6px 12px;
             border-radius: 20px;
             cursor: pointer;
             font-weight: 500;
-            font-size: 13px;
+            font-size: 12px;
             transition: all 0.2s ease;
         }
-        .btn:hover { background-color: #f0f7ff; transform: translateY(-1px); }
+        @media (min-width: 768px) { .btn { padding: 8px 16px; font-size: 13px; } }
+        .btn:hover { background-color: #f0f7ff; }
         .btn-filled { background-color: var(--apple-blue); color: white; border: none; }
         .btn-filled:hover { background-color: #0077ed; }
         .btn-success { background-color: var(--apple-green); color: white; border: none; }
@@ -67,23 +69,28 @@ HTML
         .btn-danger { color: var(--apple-red); border-color: #ffb3b0; }
         .btn-danger:hover { background-color: #fff2f1; }
 
-        /* 구글 캘린더 제어 전용 서브 버튼 */
         .cal-edit-group { display: flex; gap: 4px; }
         .btn-cal-action {
-            padding: 3px 8px; font-size: 11px; border-radius: 6px; font-weight: 600; cursor: pointer; border: 1px solid var(--border-color); background: #ffffff;
+            padding: 4px 8px; font-size: 11px; border-radius: 6px; font-weight: 600; cursor: pointer; border: 1px solid var(--border-color); background: #ffffff;
         }
         .btn-cal-action.add { color: var(--apple-blue); border-color: rgba(0, 113, 227, 0.3); }
-        .btn-cal-action.add:hover { background: #f0f7ff; }
         .btn-cal-action.del { color: var(--apple-red); border-color: rgba(255, 59, 48, 0.3); }
-        .btn-cal-action.del:hover { background: #fff2f1; }
 
-        /* 3분할 레이아웃 고정 */
+        /* [모바일 최적화 레고 레이아웃] 기본 1줄 배치 -> PC에서 3열 배치 */
         .dashboard {
-            display: grid;
-            grid-template-columns: 1fr 1.2fr 1.2fr;
-            gap: 24px;
-            height: calc(100vh - 130px);
-            min-height: 650px;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        @media (min-width: 1024px) {
+            .dashboard {
+                display: grid;
+                grid-template-columns: 1fr 1.2fr 1.2fr;
+                gap: 24px;
+                height: calc(100vh - 130px);
+                min-height: 650px;
+            }
         }
 
         .panel {
@@ -94,18 +101,20 @@ HTML
             box-shadow: 0 4px 20px rgba(0, 0, 0, 0.04);
             border: 1px solid rgba(0,0,0,0.02);
             overflow: hidden;
+            min-height: 350px; /* 모바일 스크롤 확보 */
         }
+        @media (min-width: 1024px) { .panel { min-height: auto; } }
 
-        /* 우측 패널 상하 2분할 레이아웃 */
         .panel-split {
-            display: grid;
-            grid-template-rows: 1fr 1fr;
+            display: flex;
+            flex-direction: column;
             gap: 16px;
             background: transparent;
             box-shadow: none;
             border: none;
             overflow: hidden;
         }
+        @media (min-width: 1024px) { .panel-split { display: grid; grid-template-rows: 1fr 1fr; gap: 16px; } }
 
         .sub-panel {
             background: var(--card-bg);
@@ -115,136 +124,122 @@ HTML
             flex-direction: column;
             box-shadow: 0 4px 20px rgba(0, 0, 0, 0.04);
             overflow: hidden;
+            min-height: 250px;
         }
+        @media (min-width: 1024px) { .sub-panel { min-height: auto; } }
 
         .panel-header {
-            padding: 14px 20px;
+            padding: 14px 16px;
             font-weight: 600;
-            font-size: 15px;
+            font-size: 14px;
             border-bottom: 1px solid var(--border-color);
             display: flex;
             justify-content: space-between;
             align-items: center;
             background: #ffffff;
         }
+        @media (min-width: 768px) { .panel-header { padding: 14px 20px; font-size: 15px; } }
 
-        .panel-body { padding: 20px; flex: 1; overflow-y: auto; }
+        .panel-body { padding: 16px; flex: 1; overflow-y: auto; }
+        @media (min-width: 768px) { .panel-body { padding: 20px; } }
 
-        /* 구글 캘린더 전용 스타일 */
-        .calendar-wrapper { width: 100%; height: 100%; border: none; border-radius: 8px; }
-        
+        /* 구글 캘린더 아젠다 뷰 최적화 크기 */
+        .calendar-wrapper { width: 100%; height: 100%; min-height: 320px; border: none; border-radius: 8px; }
+
         input[type="text"], textarea {
             font-family: inherit; color: var(--text-primary); border: 1px solid var(--border-color); border-radius: 8px; padding: 8px 12px; background-color: #fafafa; transition: all 0.2s ease; font-size: 14px;
         }
         input[type="text"]:focus, textarea:focus { outline: none; border-color: var(--apple-blue); background-color: #ffffff; box-shadow: 0 0 0 3px rgba(0, 113, 227, 0.1); }
         
-        /* 태스크 그룹 박스 */
         .task-group { background: #fafafa; border-radius: var(--radius-sf); margin-bottom: 16px; border: 1px solid rgba(0,0,0,0.03); overflow: hidden; }
-        .task-group-title { padding: 12px 16px; background: #f1f1f4; font-weight: 600; font-size: 14px; display: flex; justify-content: space-between; align-items: center; }
-        .task-group-title input.title-edit { border: none; background: transparent; font-weight: 600; font-size: 14px; width: 70%; }
+        .task-group-title { padding: 12px 16px; background: #f1f1f4; font-weight: 600; font-size: 13px; display: flex; justify-content: space-between; align-items: center; }
+        .task-group-title input.title-edit { border: none; background: transparent; font-weight: 600; font-size: 13px; width: 65%; }
 
-        /* 개별 할 일(To-Do) 줄 서식 */
-        .todo-item { display: flex; align-items: center; padding: 8px 16px; gap: 12px; background-color: #ffffff; border-left: 4px solid transparent; transition: all 0.2s; }
-        .todo-item:hover { background-color: #f5f5f7; }
+        .todo-item { display: flex; align-items: center; padding: 10px 14px; gap: 10px; background-color: #ffffff; border-left: 4px solid transparent; transition: all 0.2s; }
         .todo-item + .todo-item { border-top: 1px solid #f5f5f7; }
         .todo-item.active-link { background-color: #e3efff !important; border-left: 4px solid var(--apple-blue); }
-        .todo-item input[type="text"] { flex: 1; border: none; background: transparent; padding: 6px 8px; font-size: 14px; border-radius: 4px; }
-        .todo-item input[type="text"]:focus { background-color: #fafafa; outline: 1px solid var(--border-color); }
+        .todo-item input[type="text"] { flex: 1; border: none; background: transparent; padding: 4px 6px; font-size: 13px; border-radius: 4px; }
         
-        /* 원형 체크박스 */
         .todo-item input[type="checkbox"] { appearance: none; width: 18px; height: 18px; border: 1.5px solid var(--border-color); border-radius: 50%; cursor: pointer; position: relative; flex-shrink: 0; }
         .todo-item input[type="checkbox"]:checked { background-color: var(--apple-blue); border-color: var(--apple-blue); }
         .todo-item input[type="checkbox"]:checked::after { content: '✓'; position: absolute; color: white; font-size: 11px; font-weight: bold; top: 50%; left: 50%; transform: translate(-50%, -50%); }
         .todo-item.done input[type="text"] { text-decoration: line-through; color: var(--text-secondary); }
 
-        .memo-target-title { font-size: 13px; color: var(--apple-blue); font-weight: 500; margin-bottom: 8px; padding-left: 4px; word-break: break-all; }
-        .record-area { width: 100%; flex: 1; box-sizing: border-box; line-height: 1.6; resize: none; background-color: #fafafa; }
+        .memo-target-title { font-size: 12px; color: var(--apple-blue); font-weight: 500; margin-bottom: 8px; word-break: break-all; }
+        .record-area { width: 100%; flex: 1; box-sizing: border-box; line-height: 1.6; resize: none; background-color: #fafafa; min-height: 180px; }
 
-        /* 우측 하단 아카이브 목록 스타일 */
         .archive-list { display: flex; flex-direction: column; gap: 8px; }
-        .archive-item { padding: 10px 14px; background-color: #fafafa; border-radius: 8px; border: 1px solid rgba(0,0,0,0.03); cursor: pointer; transition: all 0.2s; display: flex; justify-content: space-between; align-items: center; }
-        .archive-item:hover { background-color: #edf5ff; border-color: #b3d7ff; }
+        .archive-item { padding: 10px 14px; background-color: #fafafa; border-radius: 8px; border: 1px solid rgba(0,0,0,0.03); cursor: pointer; display: flex; justify-content: space-between; align-items: center; }
         .archive-item.active-archive { background-color: #e3efff; border-color: var(--apple-blue); }
-        .archive-meta { font-size: 12px; color: var(--text-secondary); margin-bottom: 2px; font-weight: 500; }
-        .archive-title { font-size: 14px; font-weight: 600; color: var(--text-primary); }
-        .archive-preview { font-size: 12px; color: var(--text-secondary); margin-top: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 280px;}
-        .has-memo-badge { font-size: 10px; background-color: #e3efff; color: var(--apple-blue); padding: 2px 6px; border-radius: 10px; font-weight: bold; }
-        .empty-badge { font-size: 10px; background-color: #eee; color: #aaa; padding: 2px 6px; border-radius: 10px; }
+        .archive-meta { font-size: 11px; color: var(--text-secondary); margin-bottom: 2px; }
+        .archive-title { font-size: 13px; font-weight: 600; color: var(--text-primary); }
+        .archive-preview { font-size: 11px; color: var(--text-secondary); margin-top: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 200px;}
+        .has-memo-badge { font-size: 9px; background-color: #e3efff; color: var(--apple-blue); padding: 2px 6px; border-radius: 10px; font-weight: bold; }
+        .empty-badge { font-size: 9px; background-color: #eee; color: #aaa; padding: 2px 6px; border-radius: 10px; }
 
-        .action-icon { border: none; background: none; cursor: pointer; font-size: 14px; color: var(--text-secondary); padding: 4px; flex-shrink: 0; }
-        .action-icon:hover { color: var(--apple-red); }
-        .add-todo-btn { color: var(--apple-blue) !important; font-weight: 600; font-size: 12px; }
-
+        .action-icon { border: none; background: none; cursor: pointer; font-size: 13px; color: var(--text-secondary); padding: 4px; }
+        .add-todo-btn { color: var(--apple-blue) !important; font-weight: 600; font-size: 11px; }
         #file-input, #excel-input { display: none; }
     </style>
 </head>
 <body>
 
     <header>
-        <h1>Master Dashboard</h1>
+        <h1>Master Dashboard v5.7</h1>
         <div class="btn-group">
             <button class="btn btn-filled btn-success" onclick="saveData()">💾 자동저장</button>
-            <button class="btn" onclick="exportJSON()">📤 파일 백업</button>
-            <button class="btn" onclick="document.getElementById('file-input').click()">📥 백업 복원</button>
-            <input type="file" id="file-input" accept=".json" onchange="importJSON(this)">
-            
-            <button class="btn btn-filled" onclick="exportToExcel()">📊 엑셀 내보내기</button>
-            <button class="btn" onclick="document.getElementById('excel-input').click()">📈 엑셀 가져오기</button>
+            <button class="btn" onclick="exportToExcel()">📊 엑셀 저장</button>
+            <button class="btn" onclick="document.getElementById('excel-input').click()">📈 엑셀 로드</button>
             <input type="file" id="excel-input" accept=".xlsx, .xls" onchange="importFromExcel(this)">
-            
             <button class="btn btn-danger" onclick="clearData()">🔄 초기화</button>
         </div>
     </header>
 
     <div class="dashboard">
-        <!-- [왼쪽] 오늘 일정 (선택 2: 원터치 팝업 제어 장치 탑재) -->
+        <!-- [왼쪽 컬럼] 구글 캘린더 읽기 아젠다 + 원터치 팝업 에디터 탑재 -->
         <div class="panel">
             <div class="panel-header">
-                <span>🕒 오늘의 스케줄 (구글)</span>
+                <span>🕒 오늘의 일정 (구글 연동)</span>
                 <div class="cal-edit-group">
-                    <button class="btn-cal-action add" onclick="openGoogleCalendarAdd()" title="새 일정 추가">➕ 일정 추가</button>
-                    <button class="btn-cal-action del" onclick="openGoogleCalendarMain()" title="일정 관리 및 삭제">❌ 관리/삭제</button>
-                    <button class="btn-cal-action" style="color:var(--text-secondary);" onclick="setupCalendarAddress()" title="캘린더 주소 세팅">⚙️ 설정</button>
+                    <button class="btn-cal-action add" onclick="openGoogleCalendarAdd()">➕ 일정 추가</button>
+                    <button class="btn-cal-action del" onclick="openGoogleCalendarMain()">❌ 관리/삭제</button>
+                    <button class="btn-cal-action" style="color:var(--text-secondary);" onclick="setupCalendarAddress()">⚙️ 설정</button>
                 </div>
             </div>
-            <div class="panel-body" style="padding: 0; overflow: hidden; height: 100%;">
+            <div class="panel-body" style="padding: 0; overflow: hidden;">
                 <iframe id="gcal-iframe" class="calendar-wrapper" src="about:blank"></iframe>
             </div>
         </div>
 
-        <!-- [중앙] 주요 태스크별 할 일 -->
+        <!-- [중앙 컬럼] 주요 태스크별 To-Do -->
         <div class="panel">
             <div class="panel-header">
                 <span>🗂️ 주요 태스크별 To-Do</span>
-                <button class="btn btn-filled btn-success" style="padding:4px 12px; font-size:12px; border-radius:12px;" onclick="addNewTaskGroup()">+ 태스크 추가</button>
+                <button class="btn btn-filled btn-success" style="padding:4px 12px; font-size:11px; border-radius:12px;" onclick="addNewTaskGroup()">+ 태스크 추가</button>
             </div>
             <div class="panel-body" id="task-panel-body"></div>
         </div>
 
-        <!-- [오른쪽 컬럼] 상하 2단 구조 아카이브 -->
+        <!-- [오른쪽 컬럼] 상하 2단 메모 아카이브 -->
         <div class="panel panel-split">
-            
-            <!-- 위층: 메모장 열람 및 실시간 수정 -->
+            <!-- 위층: 메모 상세 입력 및 열람 -->
             <div class="sub-panel">
                 <div class="panel-header">
                     <span>📝 메모 내용 열람 및 수정</span>
                 </div>
                 <div class="panel-body" style="display:flex; flex-direction:column;">
-                    <div id="memo-target-display" class="memo-target-title">📌 선택된 할 일이 없습니다. 입력창을 클릭하거나 하단 리스트에서 선택하세요.</div>
-                    <textarea id="record-text" class="record-area" disabled placeholder="할 일(To-Do)을 선택하시면 상세 내용을 입력/수정할 수 있습니다." oninput="updateCurrentMemo(this.value)"></textarea>
+                    <div id="memo-target-display" class="memo-target-title">📌 To-Do 항목을 선택하세요.</div>
+                    <textarea id="record-text" class="record-area" disabled placeholder="할 일을 선택하면 전용 메모장이 활성화됩니다." oninput="updateCurrentMemo(this.value)"></textarea>
                 </div>
             </div>
 
-            <!-- 아래층: 아카이브 목록 자동 정렬 -->
+            <!-- 아래층: 아카이브 종합 리스트 스캔 -->
             <div class="sub-panel">
                 <div class="panel-header">
                     <span>🗄️ 메모 아카이브 목록</span>
                 </div>
-                <div class="panel-body" id="memo-archive-container">
-                    <div style="color:var(--text-secondary); font-size:13px; text-align:center; margin-top:20px;">할 일을 등록하면 메모 리스트가 이곳에 정렬됩니다.</div>
-                </div>
+                <div class="panel-body" id="memo-archive-container"></div>
             </div>
-
         </div>
     </div>
 
@@ -254,8 +249,8 @@ HTML
         let googleCalendarUrl = "";
 
         window.onload = function() {
-            if(localStorage.getItem('dashDataV5_6')) {
-                const data = JSON.parse(localStorage.getItem('dashDataV5_6'));
+            if(localStorage.getItem('dashDataV5_7')) {
+                const data = JSON.parse(localStorage.getItem('dashDataV5_7'));
                 memoStorage = data.memoStorage || {};
                 googleCalendarUrl = data.googleCalendarUrl || "";
                 renderAllData(data);
@@ -265,18 +260,16 @@ HTML
             loadCalendar();
         }
 
-        // 선택 2: [일정 추가] 버튼 연동 - 구글 캘린더 등록 팝업 호출
         function openGoogleCalendarAdd() {
-            window.open("https://calendar.google.com/calendar/render?action=TEMPLATE", "_blank", "width=800,height=600,scrollbars=yes");
+            window.open("https://calendar.google.com/calendar/render?action=TEMPLATE", "_blank");
         }
 
-        // 선택 2: [관리/삭제] 버튼 연동 - 구글 캘린더 제어판 호출
         function openGoogleCalendarMain() {
-            window.open("https://calendar.google.com/calendar", "_blank", "width=1024,height=768,scrollbars=yes");
+            window.open("https://calendar.google.com/calendar", "_blank");
         }
 
         function setupCalendarAddress() {
-            const userUrl = prompt("구글 캘린더 통합 메뉴의 [이 캘린더의 공개 URL] 주소를 입력해주세요.", googleCalendarUrl);
+            const userUrl = prompt("구글 캘린더 [이 캘린더의 공개 URL] 주소를 입력해주세요.", googleCalendarUrl);
             if (userUrl !== null) {
                 googleCalendarUrl = userUrl;
                 loadCalendar();
@@ -293,11 +286,7 @@ HTML
                 }
                 iframe.src = targetUrl;
             } else {
-                iframe.srcdoc = `
-                    <div style="font-family:sans-serif; color:#86868b; text-align:center; margin-top:120px; font-size:13px; padding:20px; line-height:1.6;">
-                        오른쪽 상단 <b>[⚙️ 설정]</b> 버튼을 눌러<br>구글 캘린더 주소를 연동해 주세요.<br><br>
-                        주소 입력 후 <b>[➕ 일정 추가]</b>나 <b>[❌ 관리/삭제]</b> 단추를 누르면<br>스케줄을 직접 제어할 수 있습니다.
-                    </div>`;
+                iframe.srcdoc = `<div style="font-family:sans-serif; color:#86868b; text-align:center; margin-top:80px; font-size:12px; padding:20px; line-height:1.6;">[⚙️ 설정]을 눌러 구글 캘린더 주소를 연동해 주세요.</div>`;
             }
         }
 
@@ -319,16 +308,15 @@ HTML
         function addNewTaskGroup(titleText = '새 태스크 그룹', todosArray = []) {
             const container = document.getElementById('task-panel-body');
             const groupId = 'group-' + Date.now() + Math.random().toString(36).substr(2, 5);
-            
             const groupDiv = document.createElement('div');
             groupDiv.className = 'task-group';
             groupDiv.id = groupId;
             groupDiv.innerHTML = `
                 <div class="task-group-title">
-                    <input type="text" class="title-edit" value="${titleText}" placeholder="태스크 그룹명" oninput="refreshMemoArchiveList()">
+                    <input type="text" class="title-edit" value="${titleText}" oninput="refreshMemoArchiveList()">
                     <div>
-                        <button class="action-icon add-todo-btn" onclick="addTodoItem('${groupId}')" title="할 일 추가">+ 할일</button>
-                        <button class="action-icon" onclick="removeTaskGroup('${groupId}')" title="태스크 삭제" style="margin-left:6px;">✕ 삭제</button>
+                        <button class="action-icon add-todo-btn" onclick="addTodoItem('${groupId}')">+ 할일</button>
+                        <button class="action-icon" onclick="removeTaskGroup('${groupId}')">✕</button>
                     </div>
                 </div>
                 <div class="todo-container" id="todo-container-${groupId}"></div>
@@ -337,14 +325,12 @@ HTML
 
             if(todosArray.length > 0) {
                 todosArray.forEach(t => addTodoItem(groupId, t.text, t.checked, t.id));
-            } else {
-                addTodoItem(groupId);
-            }
+            } else { addTodoItem(groupId); }
             refreshMemoArchiveList();
         }
 
         function removeTaskGroup(groupId) {
-            if(confirm('이 태스크 그룹과 하위 할 일 목록이 모두 삭제됩니다.')) {
+            if(confirm('태스크 그룹을 삭제하시겠습니까?')) {
                 document.getElementById(groupId).remove();
                 resetMemoArea();
                 refreshMemoArchiveList();
@@ -354,16 +340,12 @@ HTML
         function addTodoItem(groupId, text = '', checked = false, existingId = null) {
             const container = document.getElementById(`todo-container-${groupId}`);
             const todoId = existingId || 'todo-' + Date.now() + Math.random().toString(36).substr(2, 5);
-            
             const div = document.createElement('div');
             div.className = `todo-item ${checked ? 'done' : ''}`;
             div.id = todoId;
-
             div.innerHTML = `
                 <input type="checkbox" ${checked ? 'checked' : ''} onchange="toggleTodo(this)">
-                <input type="text" value="${text}" placeholder="할 일 제목을 입력하세요..." 
-                       onfocus="selectTodoItem('${todoId}')" 
-                       oninput="syncMemoHeader('${todoId}', this.value)">
+                <input type="text" value="${text}" placeholder="할 일 입력..." onfocus="selectTodoItem('${todoId}')" oninput="syncMemoHeader('${todoId}', this.value)">
                 <button class="action-icon" onclick="deleteTodoItem('${todoId}')">✕</button>
             `;
             container.appendChild(div);
@@ -386,18 +368,14 @@ HTML
         function selectTodoItem(todoId) {
             document.querySelectorAll('.todo-item').forEach(el => el.classList.remove('active-link'));
             document.querySelectorAll('.archive-item').forEach(el => el.classList.remove('active-archive'));
-            
             const todoEl = document.getElementById(todoId);
             if (!todoEl) return;
             todoEl.classList.add('active-link');
-            
             const archiveEl = document.getElementById('archive-' + todoId);
             if(archiveEl) archiveEl.classList.add('active-archive');
-            
             currentActiveTodoId = todoId;
-            const todoText = todoEl.querySelector('input[type="text"]').value || "내용 없는 할 일";
+            const todoText = todoEl.querySelector('input[type="text"]').value || "내용 없음";
             const groupTitle = todoEl.closest('.task-group').querySelector('.title-edit').value;
-            
             document.getElementById('memo-target-display').innerText = `📌 [${groupTitle}] ➔ "${todoText}"`;
             const textarea = document.getElementById('record-text');
             textarea.disabled = false;
@@ -408,10 +386,10 @@ HTML
             if(currentActiveTodoId === todoId) {
                 const todoEl = document.getElementById(todoId);
                 const groupTitle = todoEl.closest('.task-group').querySelector('.title-edit').value;
-                document.getElementById('memo-target-display').innerText = `📌 [${groupTitle}] ➔ "${val || '내용 없는 할 일'}"`;
+                document.getElementById('memo-target-display').innerText = `📌 [${groupTitle}] ➔ "${val || '내용 없음'}"`;
             }
             const archiveTitleEl = document.querySelector(`#archive-${todoId} .archive-title`);
-            if(archiveTitleEl) archiveTitleEl.innerText = val || "내용 없는 할 일";
+            if(archiveTitleEl) archiveTitleEl.innerText = val || "내용 없음";
         }
 
         function updateCurrentMemo(val) {
@@ -419,7 +397,6 @@ HTML
                 memoStorage[currentActiveTodoId] = val;
                 const previewEl = document.querySelector(`#archive-${currentActiveTodoId} .archive-preview`);
                 if(previewEl) previewEl.innerText = val ? val.replace(/\n/g, ' ') : "작성된 메모가 없습니다.";
-                
                 const badgeEl = document.querySelector(`#archive-${currentActiveTodoId} .badge-zone`);
                 if(badgeEl) {
                     badgeEl.innerHTML = val.trim() ? `<span class="has-memo-badge">메모보유</span>` : `<span class="empty-badge">비어있음</span>`;
@@ -430,43 +407,29 @@ HTML
         function refreshMemoArchiveList() {
             const container = document.getElementById('memo-archive-container');
             container.innerHTML = '';
-
             const groups = document.querySelectorAll('#task-panel-body .task-group');
-            if(groups.length === 0) {
-                container.innerHTML = '<div style="color:var(--text-secondary); font-size:13px; text-align:center; margin-top:20px;">할 일을 등록하면 메모 리스트가 이곳에 정렬됩니다.</div>';
-                return;
-            }
-
+            if(groups.length === 0) return;
             const wrapper = document.createElement('div');
             wrapper.className = 'archive-list';
-
             groups.forEach(group => {
-                const groupTitle = group.querySelector('.title-edit').value || "이름 없는 태스크";
+                const groupTitle = group.querySelector('.title-edit').value;
                 const todos = group.querySelectorAll('.todo-item');
-                
                 todos.forEach(todo => {
                     const todoId = todo.id;
-                    const todoText = todo.querySelector('input[type="text"]').value || "내용 없는 할 일";
+                    const todoText = todo.querySelector('input[type="text"]').value || "내용 없음";
                     const memoText = memoStorage[todoId] || "";
                     const hasMemo = memoText.trim().length > 0;
-                    
                     const itemDiv = document.createElement('div');
                     itemDiv.className = `archive-item ${currentActiveTodoId === todoId ? 'active-archive' : ''}`;
                     itemDiv.id = 'archive-' + todoId;
-                    
-                    itemDiv.onclick = function() {
-                        const inputEl = document.querySelector(`#${todoId} input[type="text"]`);
-                        if(inputEl) inputEl.focus(); 
-                        selectTodoItem(todoId);
-                    };
-
+                    itemDiv.onclick = function() { selectTodoItem(todoId); };
                     itemDiv.innerHTML = `
                         <div style="flex:1; overflow:hidden;">
                             <div class="archive-meta">${groupTitle}</div>
                             <div class="archive-title">${todoText}</div>
                             <div class="archive-preview">${hasMemo ? memoText.replace(/\n/g, ' ') : '작성된 메모가 없습니다.'}</div>
                         </div>
-                        <div class="badge-zone">
+                        <div class="badge-zone" style="margin-left:8px;">
                             ${hasMemo ? '<span class="has-memo-badge">메모보유</span>' : '<span class="empty-badge">비어있음</span>'}
                         </div>
                     `;
@@ -478,7 +441,7 @@ HTML
 
         function resetMemoArea() {
             currentActiveTodoId = null;
-            document.getElementById('memo-target-display').innerText = "📌 선택된 할 일이 없습니다. 입력창을 클릭하거나 하단 리스트에서 선택하세요.";
+            document.getElementById('memo-target-display').innerText = "📌 To-Do 항목을 선택하세요.";
             const textarea = document.getElementById('record-text');
             textarea.value = "";
             textarea.disabled = true;
@@ -490,11 +453,7 @@ HTML
                 const title = group.querySelector('.title-edit').value;
                 const todos = [];
                 group.querySelectorAll('.todo-item').forEach(todo => {
-                    todos.push({
-                        id: todo.id,
-                        checked: todo.querySelector('input[type="checkbox"]').checked,
-                        text: todo.querySelector('input[type="text"]').value
-                    });
+                    todos.push({ id: todo.id, checked: todo.querySelector('input[type="checkbox"]').checked, text: todo.querySelector('input[type="text"]').value });
                 });
                 taskGroupsData.push({ title, todos });
             });
@@ -503,38 +462,8 @@ HTML
 
         function saveData(isSilent = false) {
             const data = collectAllData();
-            localStorage.setItem('dashDataV5_6', JSON.stringify(data));
+            localStorage.setItem('dashDataV5_7', JSON.stringify(data));
             if(!isSilent) alert('대시보드가 안전하게 자동 저장되었습니다.');
-        }
-
-        function exportJSON() {
-            const data = collectAllData();
-            const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `대시보드_v5.6_백업_${new Date().toISOString().slice(0,10)}.json`;
-            a.click();
-            URL.revokeObjectURL(url);
-        }
-
-        function importJSON(input) {
-            const file = input.files[0];
-            if (!file) return;
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                try {
-                    const data = JSON.parse(e.target.result);
-                    memoStorage = data.memoStorage || {};
-                    googleCalendarUrl = data.googleCalendarUrl || "";
-                    renderAllData(data);
-                    loadCalendar();
-                    localStorage.setItem('dashDataV5_6', JSON.stringify(data));
-                    alert('복원 성공!');
-                } catch (err) { alert('에러'); }
-            };
-            reader.readAsText(file);
-            input.value = '';
         }
 
         function exportToExcel() {
@@ -543,16 +472,11 @@ HTML
             const todoAndMemoData = [];
             data.taskGroups.forEach(g => {
                 g.todos.forEach(t => {
-                    todoAndMemoData.push({
-                        "태스크 그룹명": g.title,
-                        "할 일 (To-Do)": t.text,
-                        "진행 상태": t.checked ? "완료" : "미완료",
-                        "연동된 회의록 및 기록 내용": memoStorage[t.id] || ""
-                    });
+                    todoAndMemoData.push({ "태스크 그룹명": g.title, "할 일 (To-Do)": t.text, "진행 상태": t.checked ? "완료" : "미완료", "연동된 회의록 및 기록 내용": memoStorage[t.id] || "" });
                 });
             });
             XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(todoAndMemoData), "주요 태스크 및 기록 소팅");
-            XLSX.writeFile(wb, `업무_대시보드_v5.6_${new Date().toISOString().slice(0,10)}.xlsx`);
+            XLSX.writeFile(wb, `업무_대시보드_v5.7_${new Date().toISOString().slice(0,10)}.xlsx`);
         }
 
         function importFromExcel(input) {
@@ -564,7 +488,6 @@ HTML
                     const d = e.target.result;
                     const workbook = XLSX.read(d, { type: 'binary' });
                     const parsedData = { schedules: [], taskGroups: [], memoStorage: {}, googleCalendarUrl: googleCalendarUrl };
-                    
                     if(workbook.Sheets["주요 태스크 및 기록 소팅"]) {
                         const rows = XLSX.utils.sheet_to_json(workbook.Sheets["주요 태스크 및 기록 소팅"]);
                         const groupMap = {};
@@ -574,7 +497,6 @@ HTML
                             const isDone = row["진행 상태"] === "완료";
                             const memoText = row["연동된 회의록 및 기록 내용"] || "";
                             const tId = 'todo-' + Math.random().toString(36).substr(2, 9);
-                            
                             if(!groupMap[groupName]) groupMap[groupName] = [];
                             groupMap[groupName].push({ id: tId, text: todoText, checked: isDone });
                             parsedData.memoStorage[tId] = memoText;
@@ -583,7 +505,7 @@ HTML
                     }
                     memoStorage = parsedData.memoStorage;
                     renderAllData(parsedData);
-                    localStorage.setItem('dashDataV5_6', JSON.stringify(parsedData));
+                    localStorage.setItem('dashDataV5_7', JSON.stringify(parsedData));
                     alert('엑셀 연동 완료!');
                 } catch (err) { alert('오류'); }
             };
@@ -593,7 +515,7 @@ HTML
 
         function clearData() {
             if(confirm('모든 데이터를 초기화하시겠습니까?')) {
-                localStorage.removeItem('dashDataV5_6');
+                localStorage.removeItem('dashDataV5_7');
                 location.reload();
             }
         }
