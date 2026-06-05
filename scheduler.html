@@ -4,7 +4,8 @@ HTML
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Master Dashboard v5.5 - Stable Calendar</title>
+    <title>Master Dashboard v5.6 - Quick Google Edit</title>
+    <!-- SheetJS 라이브러리 (엑셀 연동용) -->
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <style>
         :root {
@@ -66,6 +67,16 @@ HTML
         .btn-danger { color: var(--apple-red); border-color: #ffb3b0; }
         .btn-danger:hover { background-color: #fff2f1; }
 
+        /* 구글 캘린더 제어 전용 서브 버튼 */
+        .cal-edit-group { display: flex; gap: 4px; }
+        .btn-cal-action {
+            padding: 3px 8px; font-size: 11px; border-radius: 6px; font-weight: 600; cursor: pointer; border: 1px solid var(--border-color); background: #ffffff;
+        }
+        .btn-cal-action.add { color: var(--apple-blue); border-color: rgba(0, 113, 227, 0.3); }
+        .btn-cal-action.add:hover { background: #f0f7ff; }
+        .btn-cal-action.del { color: var(--apple-red); border-color: rgba(255, 59, 48, 0.3); }
+        .btn-cal-action.del:hover { background: #fff2f1; }
+
         /* 3분할 레이아웃 고정 */
         .dashboard {
             display: grid;
@@ -119,109 +130,39 @@ HTML
 
         .panel-body { padding: 20px; flex: 1; overflow-y: auto; }
 
-        /* 구글 캘린더 전용 스타일 (iFrame 가득 채우기) */
-        .calendar-wrapper {
-            width: 100%;
-            height: 100%;
-            border: none;
-            border-radius: 8px;
-        }
+        /* 구글 캘린더 전용 스타일 */
+        .calendar-wrapper { width: 100%; height: 100%; border: none; border-radius: 8px; }
         
         input[type="text"], textarea {
-            font-family: inherit;
-            color: var(--text-primary);
-            border: 1px solid var(--border-color);
-            border-radius: 8px;
-            padding: 8px 12px;
-            background-color: #fafafa;
-            transition: all 0.2s ease;
-            font-size: 14px;
+            font-family: inherit; color: var(--text-primary); border: 1px solid var(--border-color); border-radius: 8px; padding: 8px 12px; background-color: #fafafa; transition: all 0.2s ease; font-size: 14px;
         }
-        input[type="text"]:focus, textarea:focus {
-            outline: none;
-            border-color: var(--apple-blue);
-            background-color: #ffffff;
-            box-shadow: 0 0 0 3px rgba(0, 113, 227, 0.1);
-        }
+        input[type="text"]:focus, textarea:focus { outline: none; border-color: var(--apple-blue); background-color: #ffffff; box-shadow: 0 0 0 3px rgba(0, 113, 227, 0.1); }
         
         /* 태스크 그룹 박스 */
-        .task-group {
-            background: #fafafa;
-            border-radius: var(--radius-sf);
-            margin-bottom: 16px;
-            border: 1px solid rgba(0,0,0,0.03);
-            overflow: hidden;
-        }
-        .task-group-title {
-            padding: 12px 16px;
-            background: #f1f1f4;
-            font-weight: 600;
-            font-size: 14px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-        .task-group-title input.title-edit {
-            border: none; background: transparent; font-weight: 600; font-size: 14px; width: 70%;
-        }
+        .task-group { background: #fafafa; border-radius: var(--radius-sf); margin-bottom: 16px; border: 1px solid rgba(0,0,0,0.03); overflow: hidden; }
+        .task-group-title { padding: 12px 16px; background: #f1f1f4; font-weight: 600; font-size: 14px; display: flex; justify-content: space-between; align-items: center; }
+        .task-group-title input.title-edit { border: none; background: transparent; font-weight: 600; font-size: 14px; width: 70%; }
 
         /* 개별 할 일(To-Do) 줄 서식 */
-        .todo-item {
-            display: flex;
-            align-items: center;
-            padding: 8px 16px;
-            gap: 12px;
-            background-color: #ffffff;
-            border-left: 4px solid transparent;
-            transition: all 0.2s;
-        }
+        .todo-item { display: flex; align-items: center; padding: 8px 16px; gap: 12px; background-color: #ffffff; border-left: 4px solid transparent; transition: all 0.2s; }
         .todo-item:hover { background-color: #f5f5f7; }
         .todo-item + .todo-item { border-top: 1px solid #f5f5f7; }
-        
-        /* 활성화 하이라이트 */
-        .todo-item.active-link {
-            background-color: #e3efff !important;
-            border-left: 4px solid var(--apple-blue);
-        }
-
-        .todo-item input[type="text"] { 
-            flex: 1; border: none; background: transparent; padding: 6px 8px; font-size: 14px; border-radius: 4px;
-        }
-        .todo-item input[type="text"]:focus {
-            background-color: #fafafa; outline: 1px solid var(--border-color);
-        }
+        .todo-item.active-link { background-color: #e3efff !important; border-left: 4px solid var(--apple-blue); }
+        .todo-item input[type="text"] { flex: 1; border: none; background: transparent; padding: 6px 8px; font-size: 14px; border-radius: 4px; }
+        .todo-item input[type="text"]:focus { background-color: #fafafa; outline: 1px solid var(--border-color); }
         
         /* 원형 체크박스 */
-        .todo-item input[type="checkbox"] {
-            appearance: none; width: 18px; height: 18px; border: 1.5px solid var(--border-color); border-radius: 50%; cursor: pointer; position: relative; flex-shrink: 0;
-        }
+        .todo-item input[type="checkbox"] { appearance: none; width: 18px; height: 18px; border: 1.5px solid var(--border-color); border-radius: 50%; cursor: pointer; position: relative; flex-shrink: 0; }
         .todo-item input[type="checkbox"]:checked { background-color: var(--apple-blue); border-color: var(--apple-blue); }
-        .todo-item input[type="checkbox"]:checked::after {
-            content: '✓'; position: absolute; color: white; font-size: 11px; font-weight: bold; top: 50%; left: 50%; transform: translate(-50%, -50%);
-        }
+        .todo-item input[type="checkbox"]:checked::after { content: '✓'; position: absolute; color: white; font-size: 11px; font-weight: bold; top: 50%; left: 50%; transform: translate(-50%, -50%); }
         .todo-item.done input[type="text"] { text-decoration: line-through; color: var(--text-secondary); }
 
-        /* 메모장 타겟 안내 */
-        .memo-target-title {
-            font-size: 13px; color: var(--apple-blue); font-weight: 500; margin-bottom: 8px; padding-left: 4px;
-            word-break: break-all;
-        }
-
+        .memo-target-title { font-size: 13px; color: var(--apple-blue); font-weight: 500; margin-bottom: 8px; padding-left: 4px; word-break: break-all; }
         .record-area { width: 100%; flex: 1; box-sizing: border-box; line-height: 1.6; resize: none; background-color: #fafafa; }
 
         /* 우측 하단 아카이브 목록 스타일 */
         .archive-list { display: flex; flex-direction: column; gap: 8px; }
-        .archive-item {
-            padding: 10px 14px;
-            background-color: #fafafa;
-            border-radius: 8px;
-            border: 1px solid rgba(0,0,0,0.03);
-            cursor: pointer;
-            transition: all 0.2s;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
+        .archive-item { padding: 10px 14px; background-color: #fafafa; border-radius: 8px; border: 1px solid rgba(0,0,0,0.03); cursor: pointer; transition: all 0.2s; display: flex; justify-content: space-between; align-items: center; }
         .archive-item:hover { background-color: #edf5ff; border-color: #b3d7ff; }
         .archive-item.active-archive { background-color: #e3efff; border-color: var(--apple-blue); }
         .archive-meta { font-size: 12px; color: var(--text-secondary); margin-bottom: 2px; font-weight: 500; }
@@ -256,16 +197,22 @@ HTML
     </header>
 
     <div class="dashboard">
+        <!-- [왼쪽] 오늘 일정 (선택 2: 원터치 팝업 제어 장치 탑재) -->
         <div class="panel">
             <div class="panel-header">
-                <span>🕒 오늘의 스케줄 (구글 캘린더)</span>
-                <button class="btn" style="padding:2px 10px; font-size:11px; border-radius:12px;" onclick="setupCalendarAddress()">⚙️ 주소 설정</button>
+                <span>🕒 오늘의 스케줄 (구글)</span>
+                <div class="cal-edit-group">
+                    <button class="btn-cal-action add" onclick="openGoogleCalendarAdd()" title="새 일정 추가">➕ 일정 추가</button>
+                    <button class="btn-cal-action del" onclick="openGoogleCalendarMain()" title="일정 관리 및 삭제">❌ 관리/삭제</button>
+                    <button class="btn-cal-action" style="color:var(--text-secondary);" onclick="setupCalendarAddress()" title="캘린더 주소 세팅">⚙️ 설정</button>
+                </div>
             </div>
             <div class="panel-body" style="padding: 0; overflow: hidden; height: 100%;">
                 <iframe id="gcal-iframe" class="calendar-wrapper" src="about:blank"></iframe>
             </div>
         </div>
 
+        <!-- [중앙] 주요 태스크별 할 일 -->
         <div class="panel">
             <div class="panel-header">
                 <span>🗂️ 주요 태스크별 To-Do</span>
@@ -274,8 +221,10 @@ HTML
             <div class="panel-body" id="task-panel-body"></div>
         </div>
 
+        <!-- [오른쪽 컬럼] 상하 2단 구조 아카이브 -->
         <div class="panel panel-split">
             
+            <!-- 위층: 메모장 열람 및 실시간 수정 -->
             <div class="sub-panel">
                 <div class="panel-header">
                     <span>📝 메모 내용 열람 및 수정</span>
@@ -286,6 +235,7 @@ HTML
                 </div>
             </div>
 
+            <!-- 아래층: 아카이브 목록 자동 정렬 -->
             <div class="sub-panel">
                 <div class="panel-header">
                     <span>🗄️ 메모 아카이브 목록</span>
@@ -304,8 +254,8 @@ HTML
         let googleCalendarUrl = "";
 
         window.onload = function() {
-            if(localStorage.getItem('dashDataV5_5')) {
-                const data = JSON.parse(localStorage.getItem('dashDataV5_5'));
+            if(localStorage.getItem('dashDataV5_6')) {
+                const data = JSON.parse(localStorage.getItem('dashDataV5_6'));
                 memoStorage = data.memoStorage || {};
                 googleCalendarUrl = data.googleCalendarUrl || "";
                 renderAllData(data);
@@ -315,23 +265,28 @@ HTML
             loadCalendar();
         }
 
-        // 최초 1회 본인의 구글 캘린더 연동 주소를 등록하는 팝업 로직
+        // 선택 2: [일정 추가] 버튼 연동 - 구글 캘린더 등록 팝업 호출
+        function openGoogleCalendarAdd() {
+            window.open("https://calendar.google.com/calendar/render?action=TEMPLATE", "_blank", "width=800,height=600,scrollbars=yes");
+        }
+
+        // 선택 2: [관리/삭제] 버튼 연동 - 구글 캘린더 제어판 호출
+        function openGoogleCalendarMain() {
+            window.open("https://calendar.google.com/calendar", "_blank", "width=1024,height=768,scrollbars=yes");
+        }
+
         function setupCalendarAddress() {
-            const userUrl = prompt(
-                "교수님의 구글 캘린더 비밀 공유 주소(iFrame용)를 입력해주세요.\n\n[가져오는 방법]\n1. 구글 캘린더 웹 접속 -> 우측 상단 톱니바퀴 -> 설정\n2. 좌측 메뉴에서 교수님 이름(캘린더) 클릭\n3. '캘린더 통합' 메뉴 클릭\n4. '이 캘린더의 공개 URL' 또는 '비공개 주소' 복사 후 붙여넣기", 
-                googleCalendarUrl
-            );
+            const userUrl = prompt("구글 캘린더 통합 메뉴의 [이 캘린더의 공개 URL] 주소를 입력해주세요.", googleCalendarUrl);
             if (userUrl !== null) {
                 googleCalendarUrl = userUrl;
                 loadCalendar();
-                saveData(true); // 조용히 저장
+                saveData(true);
             }
         }
 
         function loadCalendar() {
             const iframe = document.getElementById('gcal-iframe');
             if (googleCalendarUrl && googleCalendarUrl.trim() !== "") {
-                // 노션 및 모바일에서 보기 편하도록 구글 전용 일정목록(Agenda) 뷰 모드로 자동 최적화
                 let targetUrl = googleCalendarUrl;
                 if(targetUrl.includes("calendar.google.com") && !targetUrl.includes("mode=")) {
                     targetUrl += (targetUrl.includes("?") ? "&" : "?") + "mode=AGENDA&wkst=1&bgcolor=%23ffffff&ctz=Asia%2FSeoul";
@@ -339,8 +294,9 @@ HTML
                 iframe.src = targetUrl;
             } else {
                 iframe.srcdoc = `
-                    <div style="font-family:sans-serif; color:#86868b; text-align:center; margin-top:100px; font-size:13px; padding:20px;">
-                        상단의 <b>[⚙️ 주소 설정]</b> 버튼을 눌러<br>구글 캘린더 주소를 한 번만 입력해 주세요.<br><br>오류 없이 실시간 일정이 연동됩니다.
+                    <div style="font-family:sans-serif; color:#86868b; text-align:center; margin-top:120px; font-size:13px; padding:20px; line-height:1.6;">
+                        오른쪽 상단 <b>[⚙️ 설정]</b> 버튼을 눌러<br>구글 캘린더 주소를 연동해 주세요.<br><br>
+                        주소 입력 후 <b>[➕ 일정 추가]</b>나 <b>[❌ 관리/삭제]</b> 단추를 누르면<br>스케줄을 직접 제어할 수 있습니다.
                     </div>`;
             }
         }
@@ -353,11 +309,9 @@ HTML
 
         function renderAllData(data) {
             document.getElementById('task-panel-body').innerHTML = '';
-            
             if(data.taskGroups && data.taskGroups.length > 0) {
                 data.taskGroups.forEach(g => addNewTaskGroup(g.title, g.todos));
             } else { setDefaultTasks(); }
-            
             resetMemoArea();
             refreshMemoArchiveList();
         }
@@ -413,7 +367,6 @@ HTML
                 <button class="action-icon" onclick="deleteTodoItem('${todoId}')">✕</button>
             `;
             container.appendChild(div);
-            
             if(!memoStorage[todoId]) { memoStorage[todoId] = ""; }
             refreshMemoArchiveList();
         }
@@ -436,19 +389,16 @@ HTML
             
             const todoEl = document.getElementById(todoId);
             if (!todoEl) return;
-            
             todoEl.classList.add('active-link');
             
             const archiveEl = document.getElementById('archive-' + todoId);
             if(archiveEl) archiveEl.classList.add('active-archive');
             
             currentActiveTodoId = todoId;
-            
             const todoText = todoEl.querySelector('input[type="text"]').value || "내용 없는 할 일";
             const groupTitle = todoEl.closest('.task-group').querySelector('.title-edit').value;
             
             document.getElementById('memo-target-display').innerText = `📌 [${groupTitle}] ➔ "${todoText}"`;
-            
             const textarea = document.getElementById('record-text');
             textarea.disabled = false;
             textarea.value = memoStorage[todoId] || "";
@@ -523,7 +473,6 @@ HTML
                     wrapper.appendChild(itemDiv);
                 });
             });
-
             container.appendChild(wrapper);
         }
 
@@ -536,12 +485,25 @@ HTML
         }
 
         function collectAllData() {
-            return { schedules: [], taskGroups: [], memoStorage: memoStorage, googleCalendarUrl: googleCalendarUrl };
+            const taskGroupsData = [];
+            document.querySelectorAll('#task-panel-body .task-group').forEach(group => {
+                const title = group.querySelector('.title-edit').value;
+                const todos = [];
+                group.querySelectorAll('.todo-item').forEach(todo => {
+                    todos.push({
+                        id: todo.id,
+                        checked: todo.querySelector('input[type="checkbox"]').checked,
+                        text: todo.querySelector('input[type="text"]').value
+                    });
+                });
+                taskGroupsData.push({ title, todos });
+            });
+            return { schedules: [], taskGroups: taskGroupsData, memoStorage: memoStorage, googleCalendarUrl: googleCalendarUrl };
         }
 
         function saveData(isSilent = false) {
             const data = collectAllData();
-            localStorage.setItem('dashDataV5_5', JSON.stringify(data));
+            localStorage.setItem('dashDataV5_6', JSON.stringify(data));
             if(!isSilent) alert('대시보드가 안전하게 자동 저장되었습니다.');
         }
 
@@ -551,7 +513,7 @@ HTML
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = `대시보드_v5.5_백업_${new Date().toISOString().slice(0,10)}.json`;
+            a.download = `대시보드_v5.6_백업_${new Date().toISOString().slice(0,10)}.json`;
             a.click();
             URL.revokeObjectURL(url);
         }
@@ -567,7 +529,7 @@ HTML
                     googleCalendarUrl = data.googleCalendarUrl || "";
                     renderAllData(data);
                     loadCalendar();
-                    localStorage.setItem('dashDataV5_5', JSON.stringify(data));
+                    localStorage.setItem('dashDataV5_6', JSON.stringify(data));
                     alert('복원 성공!');
                 } catch (err) { alert('에러'); }
             };
@@ -578,7 +540,6 @@ HTML
         function exportToExcel() {
             const data = collectAllData();
             const wb = XLSX.utils.book_new();
-            
             const todoAndMemoData = [];
             data.taskGroups.forEach(g => {
                 g.todos.forEach(t => {
@@ -591,7 +552,7 @@ HTML
                 });
             });
             XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(todoAndMemoData), "주요 태스크 및 기록 소팅");
-            XLSX.writeFile(wb, `업무_대시보드_v5.5_${new Date().toISOString().slice(0,10)}.xlsx`);
+            XLSX.writeFile(wb, `업무_대시보드_v5.6_${new Date().toISOString().slice(0,10)}.xlsx`);
         }
 
         function importFromExcel(input) {
@@ -620,10 +581,9 @@ HTML
                         });
                         for(let title in groupMap) { parsedData.taskGroups.push({ title: title, todos: groupMap[title] }); }
                     }
-                    
                     memoStorage = parsedData.memoStorage;
                     renderAllData(parsedData);
-                    localStorage.setItem('dashDataV5_5', JSON.stringify(parsedData));
+                    localStorage.setItem('dashDataV5_6', JSON.stringify(parsedData));
                     alert('엑셀 연동 완료!');
                 } catch (err) { alert('오류'); }
             };
@@ -633,7 +593,7 @@ HTML
 
         function clearData() {
             if(confirm('모든 데이터를 초기화하시겠습니까?')) {
-                localStorage.removeItem('dashDataV5_5');
+                localStorage.removeItem('dashDataV5_6');
                 location.reload();
             }
         }
