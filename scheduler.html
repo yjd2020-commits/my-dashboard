@@ -3,29 +3,464 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Master Dashboard v7.0 - Auto Sync + Calendar Panel</title>
+  <title>Master Dashboard v7.1 - Apple Minimal</title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
     :root {
-      --bg-color:#f5f5f7;--card-bg:#ffffff;--text-primary:#1d1d1f;--text-secondary:#86868b;--apple-blue:#0071e3;--apple-green:#34c759;--apple-red:#ff3b30;--apple-orange:#ff9500;--border-color:#d2d2d7;--radius-sf:12px;
+      color-scheme: light;
+      --bg-color: #f5f5f7;
+      --bg-soft: #fbfbfd;
+      --card-bg: rgba(255, 255, 255, 0.86);
+      --card-solid: #ffffff;
+      --text-primary: #1d1d1f;
+      --text-secondary: #6e6e73;
+      --text-tertiary: #a1a1a6;
+      --apple-blue: #0a84ff;
+      --apple-green: #30d158;
+      --apple-red: #ff453a;
+      --apple-orange: #ff9f0a;
+      --border-color: rgba(0, 0, 0, 0.08);
+      --hairline: rgba(60, 60, 67, 0.12);
+      --shadow-soft: 0 18px 45px rgba(0, 0, 0, 0.08);
+      --shadow-subtle: 0 8px 24px rgba(0, 0, 0, 0.055);
+      --radius-lg: 24px;
+      --radius-md: 18px;
+      --radius-sm: 12px;
+      --blur-bg: blur(22px) saturate(180%);
     }
-    body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background:var(--bg-color);color:var(--text-primary);margin:0;padding:16px;letter-spacing:-.02em;-webkit-font-smoothing:antialiased;}
-    header{display:flex;flex-direction:column;gap:12px;padding-bottom:16px;margin-bottom:16px;border-bottom:1px solid var(--border-color);}h1{margin:0;font-size:22px;font-weight:600;}
-    @media(min-width:768px){body{padding:30px;}header{flex-direction:row;justify-content:space-between;align-items:center;padding-bottom:20px;margin-bottom:20px;}h1{font-size:26px;}}
-    .btn-group{display:flex;gap:8px;flex-wrap:wrap;align-items:center}.sync-badge{font-size:11px;padding:6px 12px;border-radius:12px;font-weight:700;background:#f5f5f7;color:var(--text-secondary);border:1px solid var(--border-color)}.last-save{font-size:11px;color:var(--text-secondary)}
-    button{font-family:inherit}.btn-main-save{background:var(--apple-blue);color:white;border:0;padding:8px 18px;border-radius:20px;cursor:pointer;font-weight:600;font-size:13px;box-shadow:0 2px 8px rgba(0,113,227,.2);}.btn-main-save:hover{background:#0063c6}.btn-sub{background:white;color:var(--text-primary);border:1px solid var(--border-color);padding:7px 12px;border-radius:18px;cursor:pointer;font-weight:600;font-size:12px}.btn-danger{color:var(--apple-red);border:1px solid var(--apple-red);background:white;padding:7px 12px;font-size:12px;border-radius:18px;cursor:pointer}.btn-filled-green{background:var(--apple-green);color:white;border:0;padding:4px 12px;font-size:11px;border-radius:12px;cursor:pointer}.action-icon{border:0;background:transparent;cursor:pointer;color:var(--text-secondary)}
-    .dashboard{display:flex;flex-direction:column;gap:16px}@media(min-width:1024px){.dashboard{display:grid;grid-template-columns:1fr 1.2fr 1.2fr;gap:24px;height:calc(100vh - 138px);min-height:650px}}
-    .panel{background:var(--card-bg);border-radius:var(--radius-sf);display:flex;flex-direction:column;box-shadow:0 4px 20px rgba(0,0,0,.04);border:1px solid rgba(0,0,0,.02);overflow:hidden;min-height:350px}@media(min-width:1024px){.panel{min-height:auto}}
-    .panel-split{display:flex;flex-direction:column;gap:16px;background:transparent;box-shadow:none;border:0;overflow:hidden}@media(min-width:1024px){.panel-split{display:grid;grid-template-rows:1fr 1fr;gap:16px}}
-    .sub-panel{background:var(--card-bg);border-radius:var(--radius-sf);border:1px solid rgba(0,0,0,.04);display:flex;flex-direction:column;box-shadow:0 4px 20px rgba(0,0,0,.04);overflow:hidden;min-height:250px}@media(min-width:1024px){.sub-panel{min-height:auto}}
-    .panel-header{padding:14px 16px;font-weight:600;font-size:14px;border-bottom:1px solid var(--border-color);display:flex;justify-content:space-between;align-items:center;gap:8px;background:white}.panel-body{padding:16px;flex:1;overflow-y:auto}.cal-edit-group{display:flex;gap:4px;flex-wrap:wrap}.btn-cal-action{padding:4px 8px;font-size:11px;border-radius:6px;font-weight:600;cursor:pointer;border:1px solid var(--border-color);background:white}.btn-cal-action.add{color:var(--apple-blue);border-color:rgba(0,113,227,.3)}.btn-cal-action.del{color:var(--apple-red);border-color:rgba(255,59,48,.3)}.calendar-wrapper{width:100%;height:100%;min-height:320px;border:0;border-radius:8px}.calendar-note{font-size:11px;color:var(--text-secondary);padding:8px 12px;border-bottom:1px solid #eee;background:#fafafa;line-height:1.4}
-    input[type="text"],textarea{font-family:inherit;color:var(--text-primary);border:1px solid var(--border-color);border-radius:8px;padding:8px 12px;background:#fafafa;font-size:14px;width:100%;box-sizing:border-box}.task-group{background:#fafafa;border-radius:var(--radius-sf);margin-bottom:16px;border:1px solid rgba(0,0,0,.03);overflow:hidden}.task-group-title{padding:12px 16px;background:#f1f1f4;font-weight:600;font-size:13px;display:flex;justify-content:space-between;align-items:center}.task-group-title input.title-edit{border:0;background:transparent;font-weight:600;font-size:13px;width:65%}.todo-item{display:flex;align-items:center;padding:10px 14px;gap:10px;background:white;border-left:4px solid transparent}.todo-item+.todo-item{border-top:1px solid #f5f5f7}.todo-item.active-link{background:#e3efff!important;border-left:4px solid var(--apple-blue)}.todo-item input[type="text"]{flex:1;border:0;background:transparent;padding:4px 6px;font-size:13px}.todo-item input[type="checkbox"]{appearance:none;width:18px;height:18px;border:1.5px solid var(--border-color);border-radius:50%;cursor:pointer;position:relative;flex-shrink:0}.todo-item input[type="checkbox"]:checked{background:var(--apple-blue);border-color:var(--apple-blue)}.todo-item input[type="checkbox"]:checked:after{content:'✓';position:absolute;color:white;font-size:11px;font-weight:bold;top:50%;left:50%;transform:translate(-50%,-50%)}.todo-item.done input[type="text"]{text-decoration:line-through;color:var(--text-secondary)}.memo-target-title{font-size:12px;color:var(--apple-blue);font-weight:500;margin-bottom:8px}.record-area{width:100%;flex:1;resize:none;background:#fafafa;min-height:180px}.archive-list{display:flex;flex-direction:column;gap:8px}.archive-item{padding:10px 14px;background:#fafafa;border-radius:8px;border:1px solid rgba(0,0,0,.03);cursor:pointer;display:flex;justify-content:space-between;align-items:center}.archive-item.active-archive{background:#e3efff;border-color:var(--apple-blue)}.archive-meta{font-size:11px;color:var(--text-secondary)}.archive-title{font-size:13px;font-weight:600}.archive-preview{font-size:11px;color:var(--text-secondary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:200px}.has-memo-badge{font-size:9px;background:#e3efff;color:var(--apple-blue);padding:2px 6px;border-radius:10px;font-weight:bold}.empty-badge{font-size:9px;background:#eee;color:#aaa;padding:2px 6px;border-radius:10px}.hidden{display:none!important}
+
+    * { box-sizing: border-box; }
+    html { height: 100%; }
+    body {
+      min-height: 100%;
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Segoe UI", Roboto, sans-serif;
+      background:
+        radial-gradient(circle at 12% 0%, rgba(10, 132, 255, 0.10), transparent 28%),
+        radial-gradient(circle at 88% 8%, rgba(48, 209, 88, 0.08), transparent 24%),
+        linear-gradient(180deg, #fbfbfd 0%, #f5f5f7 42%, #f2f2f7 100%);
+      color: var(--text-primary);
+      margin: 0;
+      padding: 18px;
+      letter-spacing: -0.022em;
+      -webkit-font-smoothing: antialiased;
+      text-rendering: optimizeLegibility;
+    }
+
+    header {
+      position: sticky;
+      top: 0;
+      z-index: 20;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      padding: 16px;
+      margin: -2px 0 18px;
+      border: 1px solid var(--hairline);
+      border-radius: var(--radius-lg);
+      background: rgba(255, 255, 255, 0.72);
+      backdrop-filter: var(--blur-bg);
+      -webkit-backdrop-filter: var(--blur-bg);
+      box-shadow: var(--shadow-subtle);
+    }
+
+    h1 {
+      margin: 0;
+      font-size: 24px;
+      line-height: 1.08;
+      font-weight: 720;
+      letter-spacing: -0.045em;
+    }
+
+    .last-save {
+      margin-top: 6px;
+      font-size: 12px;
+      color: var(--text-secondary);
+    }
+
+    .btn-group, .cal-edit-group {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    button {
+      font-family: inherit;
+      border: 0;
+      user-select: none;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    button:hover { transform: translateY(-1px); }
+    button:active { transform: translateY(0); opacity: 0.82; }
+
+    .btn-main-save,
+    .btn-sub,
+    .btn-danger,
+    .btn-filled-green,
+    .btn-cal-action {
+      min-height: 34px;
+      border-radius: 999px;
+      cursor: pointer;
+      font-weight: 650;
+      transition: transform .16s ease, opacity .16s ease, background .16s ease, box-shadow .16s ease;
+      white-space: nowrap;
+    }
+
+    .btn-main-save {
+      padding: 8px 18px;
+      background: linear-gradient(180deg, #0a84ff 0%, #0071e3 100%);
+      color: #fff;
+      box-shadow: 0 8px 18px rgba(10, 132, 255, 0.26);
+      font-size: 13px;
+    }
+
+    .btn-sub {
+      padding: 8px 14px;
+      background: rgba(255, 255, 255, 0.76);
+      color: var(--text-primary);
+      border: 1px solid var(--hairline);
+      box-shadow: 0 2px 7px rgba(0, 0, 0, 0.035);
+      font-size: 12px;
+    }
+
+    .btn-danger {
+      padding: 8px 14px;
+      color: var(--apple-red);
+      background: rgba(255, 69, 58, 0.08);
+      border: 1px solid rgba(255, 69, 58, 0.16);
+      font-size: 12px;
+    }
+
+    .btn-filled-green {
+      padding: 7px 13px;
+      background: rgba(48, 209, 88, 0.13);
+      color: #16843a;
+      border: 1px solid rgba(48, 209, 88, 0.18);
+      font-size: 12px;
+    }
+
+    .btn-cal-action {
+      padding: 6px 10px;
+      background: rgba(255, 255, 255, 0.72);
+      color: var(--text-secondary);
+      border: 1px solid var(--hairline);
+      font-size: 11px;
+    }
+    .btn-cal-action.add { color: var(--apple-blue); background: rgba(10, 132, 255, 0.08); border-color: rgba(10, 132, 255, 0.15); }
+    .btn-cal-action.del { color: #8e6a00; background: rgba(255, 159, 10, 0.10); border-color: rgba(255, 159, 10, 0.18); }
+
+    .sync-badge {
+      min-height: 34px;
+      display: inline-flex;
+      align-items: center;
+      padding: 7px 13px;
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: 700;
+      background: rgba(118, 118, 128, 0.10);
+      color: var(--text-secondary);
+      border: 1px solid var(--hairline);
+    }
+
+    .dashboard {
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+    }
+
+    .panel,
+    .sub-panel {
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      min-height: 350px;
+      overflow: hidden;
+      border-radius: var(--radius-lg);
+      background: var(--card-bg);
+      border: 1px solid var(--hairline);
+      box-shadow: var(--shadow-soft);
+      backdrop-filter: var(--blur-bg);
+      -webkit-backdrop-filter: var(--blur-bg);
+    }
+
+    .panel-split {
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+      background: transparent;
+      border: 0;
+      box-shadow: none;
+      overflow: visible;
+    }
+
+    .sub-panel { min-height: 260px; }
+
+    .panel-header {
+      min-height: 56px;
+      padding: 15px 18px;
+      font-weight: 700;
+      font-size: 14px;
+      border-bottom: 1px solid var(--hairline);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+      background: rgba(255, 255, 255, 0.64);
+      backdrop-filter: blur(18px);
+      -webkit-backdrop-filter: blur(18px);
+    }
+
+    .panel-body {
+      padding: 18px;
+      flex: 1;
+      overflow-y: auto;
+    }
+
+    .panel-body::-webkit-scrollbar,
+    textarea::-webkit-scrollbar { width: 8px; }
+    .panel-body::-webkit-scrollbar-thumb,
+    textarea::-webkit-scrollbar-thumb { background: rgba(60, 60, 67, 0.18); border-radius: 999px; }
+
+    .calendar-note {
+      font-size: 11px;
+      color: var(--text-secondary);
+      padding: 10px 16px;
+      border-bottom: 1px solid var(--hairline);
+      background: rgba(255, 255, 255, 0.42);
+      line-height: 1.45;
+    }
+
+    .calendar-wrapper {
+      width: 100%;
+      height: 100%;
+      min-height: 360px;
+      border: 0;
+      background: #fff;
+      border-radius: 0 0 var(--radius-lg) var(--radius-lg);
+    }
+
+    input[type="text"], textarea {
+      font-family: inherit;
+      width: 100%;
+      color: var(--text-primary);
+      border: 1px solid transparent;
+      border-radius: var(--radius-sm);
+      padding: 10px 12px;
+      background: rgba(118, 118, 128, 0.08);
+      font-size: 14px;
+      outline: none;
+      transition: background .16s ease, border-color .16s ease, box-shadow .16s ease;
+    }
+
+    input[type="text"]:focus,
+    textarea:focus {
+      background: rgba(255, 255, 255, 0.96);
+      border-color: rgba(10, 132, 255, 0.38);
+      box-shadow: 0 0 0 4px rgba(10, 132, 255, 0.10);
+    }
+
+    textarea::placeholder,
+    input::placeholder { color: var(--text-tertiary); }
+
+    .task-group {
+      margin-bottom: 14px;
+      overflow: hidden;
+      border-radius: var(--radius-md);
+      background: rgba(255, 255, 255, 0.72);
+      border: 1px solid var(--hairline);
+      box-shadow: 0 6px 18px rgba(0, 0, 0, 0.035);
+    }
+
+    .task-group-title {
+      padding: 12px 14px;
+      background: rgba(118, 118, 128, 0.07);
+      font-weight: 700;
+      font-size: 13px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .task-group-title input.title-edit {
+      border: 0;
+      background: transparent;
+      font-weight: 700;
+      font-size: 13px;
+      width: 68%;
+      padding: 6px 8px;
+      box-shadow: none;
+    }
+
+    .todo-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-height: 48px;
+      padding: 9px 12px;
+      background: rgba(255, 255, 255, 0.84);
+      border-left: 3px solid transparent;
+      transition: background .16s ease, border-color .16s ease;
+    }
+    .todo-item + .todo-item { border-top: 1px solid rgba(60, 60, 67, 0.08); }
+    .todo-item:hover { background: rgba(255, 255, 255, 0.98); }
+    .todo-item.active-link {
+      background: rgba(10, 132, 255, 0.09) !important;
+      border-left-color: var(--apple-blue);
+    }
+
+    .todo-item input[type="text"] {
+      flex: 1;
+      border: 0;
+      background: transparent;
+      padding: 6px 8px;
+      font-size: 13px;
+      box-shadow: none;
+    }
+
+    .todo-item input[type="checkbox"] {
+      appearance: none;
+      width: 19px;
+      height: 19px;
+      border: 1.5px solid rgba(60, 60, 67, 0.28);
+      border-radius: 50%;
+      cursor: pointer;
+      position: relative;
+      flex-shrink: 0;
+      background: rgba(255, 255, 255, 0.72);
+      transition: background .16s ease, border-color .16s ease, transform .16s ease;
+    }
+    .todo-item input[type="checkbox"]:hover { transform: scale(1.06); }
+    .todo-item input[type="checkbox"]:checked { background: var(--apple-blue); border-color: var(--apple-blue); }
+    .todo-item input[type="checkbox"]:checked::after {
+      content: '✓';
+      position: absolute;
+      color: white;
+      font-size: 11px;
+      font-weight: 800;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -52%);
+    }
+    .todo-item.done input[type="text"] { text-decoration: line-through; color: var(--text-tertiary); }
+
+    .action-icon {
+      border: 0;
+      background: transparent;
+      cursor: pointer;
+      color: var(--text-tertiary);
+      border-radius: 50%;
+      min-width: 28px;
+      height: 28px;
+      transition: background .16s ease, color .16s ease;
+    }
+    .action-icon:hover { background: rgba(118, 118, 128, 0.10); color: var(--text-primary); }
+
+    .memo-target-title {
+      font-size: 12px;
+      color: var(--apple-blue);
+      font-weight: 650;
+      margin-bottom: 10px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .record-area {
+      flex: 1;
+      resize: none;
+      min-height: 190px;
+      line-height: 1.55;
+      background: rgba(118, 118, 128, 0.07);
+    }
+
+    .archive-list {
+      display: flex;
+      flex-direction: column;
+      gap: 9px;
+    }
+
+    .archive-item {
+      padding: 12px 13px;
+      background: rgba(255, 255, 255, 0.70);
+      border-radius: var(--radius-md);
+      border: 1px solid var(--hairline);
+      cursor: pointer;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      transition: background .16s ease, border-color .16s ease, transform .16s ease;
+    }
+    .archive-item:hover { transform: translateY(-1px); background: rgba(255, 255, 255, 0.96); }
+    .archive-item.active-archive { background: rgba(10, 132, 255, 0.09); border-color: rgba(10, 132, 255, 0.28); }
+
+    .archive-meta { font-size: 11px; color: var(--text-tertiary); margin-bottom: 3px; }
+    .archive-title { font-size: 13px; font-weight: 700; color: var(--text-primary); }
+    .archive-preview {
+      margin-top: 3px;
+      font-size: 11px;
+      color: var(--text-secondary);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 230px;
+    }
+
+    .has-memo-badge,
+    .empty-badge {
+      font-size: 9px;
+      padding: 3px 7px;
+      border-radius: 999px;
+      font-weight: 800;
+      white-space: nowrap;
+    }
+    .has-memo-badge { background: rgba(10, 132, 255, 0.10); color: var(--apple-blue); }
+    .empty-badge { background: rgba(118, 118, 128, 0.10); color: var(--text-tertiary); }
+    .hidden { display: none !important; }
+
+    @media (min-width: 768px) {
+      body { padding: 26px; }
+      header {
+        flex-direction: row;
+        justify-content: space-between;
+        align-items: center;
+        padding: 18px 20px;
+        margin-bottom: 22px;
+      }
+      h1 { font-size: 28px; }
+    }
+
+    @media (min-width: 1180px) {
+      body { padding: 30px; }
+      .dashboard {
+        display: grid;
+        grid-template-columns: minmax(320px, 0.95fr) minmax(360px, 1.15fr) minmax(360px, 1.15fr);
+        gap: 22px;
+        height: calc(100vh - 142px);
+        min-height: 680px;
+      }
+      .panel, .sub-panel { min-height: auto; }
+      .panel-split {
+        display: grid;
+        grid-template-rows: 1fr 1fr;
+        gap: 22px;
+      }
+    }
+
+    @media (max-width: 767px) {
+      header { border-radius: 20px; }
+      .panel, .sub-panel { border-radius: 20px; }
+      .panel-header { flex-direction: column; align-items: flex-start; }
+      .btn-group { width: 100%; }
+      .btn-main-save, .btn-sub, .btn-danger, .sync-badge { flex: 1 1 auto; justify-content: center; }
+    }
   </style>
 </head>
 <body>
   <header>
     <div>
-      <h1>Master Dashboard v7.0</h1>
+      <h1>Master Dashboard</h1>
       <div id="last-save" class="last-save">마지막 저장: -</div>
     </div>
     <div class="btn-group">
@@ -50,7 +485,7 @@
           <button class="btn-cal-action" onclick="setupCalendarAddress()">⚙️ 설정</button>
         </div>
       </div>
-      <div class="calendar-note">보기 모드는 대시보드 안에서 구글 일정을 표시합니다. 구글 보안 정책상 편집 화면이 iframe에서 차단될 수 있어, 차단되면 버튼으로 새 탭 편집을 사용하세요.</div>
+      <div class="calendar-note">구글 일정은 좌측 패널에서 확인하고, 편집 화면이 차단될 경우 새 탭으로 자동 전환됩니다.</div>
       <div class="panel-body" style="padding:0;overflow:hidden;display:flex;flex-direction:column;">
         <iframe id="gcal-iframe" class="calendar-wrapper" src="about:blank"></iframe>
       </div>
@@ -349,7 +784,7 @@
       }
     }
     function downloadBackup() {
-      const data = collectAllData(); data.meta = { updatedAt: nowIso(), deviceId, appVersion: 'v7.0-backup' };
+      const data = collectAllData(); data.meta = { updatedAt: nowIso(), deviceId, appVersion: 'v7.1-apple-minimal-backup' };
       const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
       const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'dashboard_backup_' + new Date().toISOString().slice(0, 10) + '.json'; a.click(); URL.revokeObjectURL(a.href);
     }
