@@ -218,8 +218,7 @@
             const configError = validateSupabaseConfig();
             if (configError) {
                 document.getElementById('sync-status').innerText = "⚠️ Supabase 설정 필요";
-                alert("Supabase 설정 오류:
-" + configError);
+                alert("Supabase 설정 오류:\n" + configError);
                 setDefaultTasks();
                 loadCalendar();
                 return;
