@@ -1,543 +1,368 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Master Dashboard v6.4 - Supabase Key Diagnostic</title>
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <style>
-        :root {
-            --bg-color: #f5f5f7;
-            --card-bg: #ffffff;
-            --text-primary: #1d1d1f;
-            --text-secondary: #86868b;
-            --apple-blue: #0071e3;
-            --apple-green: #34c759;
-            --apple-red: #ff3b30;
-            --border-color: #d2d2d7;
-            --radius-sf: 12px;
-        }
-
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-            background-color: var(--bg-color);
-            color: var(--text-primary);
-            margin: 0;
-            padding: 16px;
-            letter-spacing: -0.02em;
-            -webkit-font-smoothing: antialiased;
-        }
-
-        header { display: flex; flex-direction: column; gap: 12px; padding-bottom: 16px; margin-bottom: 16px; border-bottom: 1px solid var(--border-color); }
-        h1 { margin: 0; font-size: 22px; font-weight: 600; }
-        
-        @media (min-width: 768px) {
-            body { padding: 30px; }
-            header { flex-direction: row; justify-content: space-between; align-items: center; padding-bottom: 24px; margin-bottom: 24px; }
-            h1 { font-size: 26px; }
-        }
-
-        .btn-group { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
-        .sync-badge { font-size: 11px; padding: 6px 12px; border-radius: 12px; font-weight: bold; background: #f5f5f7; color: var(--text-secondary); border: 1px solid var(--border-color); }
-        
-        .btn-main-save {
-            background-color: var(--apple-blue);
-            color: white;
-            border: none;
-            padding: 8px 20px;
-            border-radius: 20px;
-            cursor: pointer;
-            font-weight: 600;
-            font-size: 13px;
-            box-shadow: 0 2px 8px rgba(0, 113, 227, 0.2);
-            transition: all 0.2s ease;
-        }
-        .btn-main-save:hover { background-color: #0063c6; transform: translateY(-1px); }
-
-        .cal-edit-group { display: flex; gap: 4px; }
-        .btn-cal-action { padding: 4px 8px; font-size: 11px; border-radius: 6px; font-weight: 600; cursor: pointer; border: 1px solid var(--border-color); background: #ffffff; }
-        .btn-cal-action.add { color: var(--apple-blue); border-color: rgba(0, 113, 227, 0.3); }
-        .btn-cal-action.del { color: var(--apple-red); border-color: rgba(255, 59, 48, 0.3); }
-
-        .dashboard { display: flex; flex-direction: column; gap: 16px; }
-        @media (min-width: 1024px) { .dashboard { display: grid; grid-template-columns: 1fr 1.2fr 1.2fr; gap: 24px; height: calc(100vh - 130px); min-height: 650px; } }
-
-        .panel { background: var(--card-bg); border-radius: var(--radius-sf); display: flex; flex-direction: column; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.04); border: 1px solid rgba(0,0,0,0.02); overflow: hidden; min-height: 350px; }
-        @media (min-width: 1024px) { .panel { min-height: auto; } }
-
-        .panel-split { display: flex; flex-direction: column; gap: 16px; background: transparent; box-shadow: none; border: none; overflow: hidden; }
-        @media (min-width: 1024px) { .panel-split { display: grid; grid-template-rows: 1fr 1fr; gap: 16px; } }
-
-        .sub-panel { background: var(--card-bg); border-radius: var(--radius-sf); border: 1px solid rgba(0,0,0,0.04); display: flex; flex-direction: column; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.04); overflow: hidden; min-height: 250px; }
-        @media (min-width: 1024px) { .sub-panel { min-height: auto; } }
-
-        .panel-header { padding: 14px 16px; font-weight: 600; font-size: 14px; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; background: #ffffff; }
-        .panel-body { padding: 16px; flex: 1; overflow-y: auto; }
-
-        .calendar-wrapper { width: 100%; height: 100%; min-height: 320px; border: none; border-radius: 8px; }
-        input[type="text"], textarea { font-family: inherit; color: var(--text-primary); border: 1px solid var(--border-color); border-radius: 8px; padding: 8px 12px; background-color: #fafafa; font-size: 14px; width: 100%; box-sizing: border-box; }
-        
-        .task-group { background: #fafafa; border-radius: var(--radius-sf); margin-bottom: 16px; border: 1px solid rgba(0,0,0,0.03); overflow: hidden; }
-        .task-group-title { padding: 12px 16px; background: #f1f1f4; font-weight: 600; font-size: 13px; display: flex; justify-content: space-between; align-items: center; }
-        .task-group-title input.title-edit { border: none; background: transparent; font-weight: 600; font-size: 13px; width: 65%; }
-
-        .todo-item { display: flex; align-items: center; padding: 10px 14px; gap: 10px; background-color: #ffffff; border-left: 4px solid transparent; }
-        .todo-item + .todo-item { border-top: 1px solid #f5f5f7; }
-        .todo-item.active-link { background-color: #e3efff !important; border-left: 4px solid var(--apple-blue); }
-        .todo-item input[type="text"] { flex: 1; border: none; background: transparent; padding: 4px 6px; font-size: 13px; }
-        
-        .todo-item input[type="checkbox"] { appearance: none; width: 18px; height: 18px; border: 1.5px solid var(--border-color); border-radius: 50%; cursor: pointer; position: relative; flex-shrink: 0; }
-        .todo-item input[type="checkbox"]:checked { background-color: var(--apple-blue); border-color: var(--apple-blue); }
-        .todo-item input[type="checkbox"]:checked::after { content: '✓'; position: absolute; color: white; font-size: 11px; font-weight: bold; top: 50%; left: 50%; transform: translate(-50%, -50%); }
-        .todo-item.done input[type="text"] { text-decoration: line-through; color: var(--text-secondary); }
-
-        .memo-target-title { font-size: 12px; color: var(--apple-blue); font-weight: 500; margin-bottom: 8px; }
-        .record-area { width: 100%; flex: 1; resize: none; background-color: #fafafa; min-height: 180px; }
-
-        .archive-list { display: flex; flex-direction: column; gap: 8px; }
-        .archive-item { padding: 10px 14px; background-color: #fafafa; border-radius: 8px; border: 1px solid rgba(0,0,0,0.03); cursor: pointer; display: flex; justify-content: space-between; align-items: center; }
-        .archive-item.active-archive { background-color: #e3efff; border-color: var(--apple-blue); }
-        .archive-meta { font-size: 11px; color: var(--text-secondary); }
-        .archive-title { font-size: 13px; font-weight: 600; }
-        .archive-preview { font-size: 11px; color: var(--text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 200px; }
-        .has-memo-badge { font-size: 9px; background-color: #e3efff; color: var(--apple-blue); padding: 2px 6px; border-radius: 10px; font-weight: bold; }
-        .empty-badge { font-size: 9px; background-color: #eee; color: #aaa; padding: 2px 6px; border-radius: 10px; }
-
-        .action-icon { border: none; background: none; cursor: pointer; color: var(--text-secondary); }
-        .btn-filled-green { background-color: var(--apple-green); color: white; border: none; padding: 4px 12px; font-size: 11px; border-radius: 12px; cursor: pointer; }
-        .btn-danger { color: var(--apple-red); border: 1px solid var(--apple-red); background: none; padding: 4px 12px; font-size: 11px; border-radius: 12px; cursor: pointer; }
-    </style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Master Dashboard v7.0 - Auto Sync + Calendar Panel</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    :root {
+      --bg-color:#f5f5f7;--card-bg:#ffffff;--text-primary:#1d1d1f;--text-secondary:#86868b;--apple-blue:#0071e3;--apple-green:#34c759;--apple-red:#ff3b30;--apple-orange:#ff9500;--border-color:#d2d2d7;--radius-sf:12px;
+    }
+    body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background:var(--bg-color);color:var(--text-primary);margin:0;padding:16px;letter-spacing:-.02em;-webkit-font-smoothing:antialiased;}
+    header{display:flex;flex-direction:column;gap:12px;padding-bottom:16px;margin-bottom:16px;border-bottom:1px solid var(--border-color);}h1{margin:0;font-size:22px;font-weight:600;}
+    @media(min-width:768px){body{padding:30px;}header{flex-direction:row;justify-content:space-between;align-items:center;padding-bottom:20px;margin-bottom:20px;}h1{font-size:26px;}}
+    .btn-group{display:flex;gap:8px;flex-wrap:wrap;align-items:center}.sync-badge{font-size:11px;padding:6px 12px;border-radius:12px;font-weight:700;background:#f5f5f7;color:var(--text-secondary);border:1px solid var(--border-color)}.last-save{font-size:11px;color:var(--text-secondary)}
+    button{font-family:inherit}.btn-main-save{background:var(--apple-blue);color:white;border:0;padding:8px 18px;border-radius:20px;cursor:pointer;font-weight:600;font-size:13px;box-shadow:0 2px 8px rgba(0,113,227,.2);}.btn-main-save:hover{background:#0063c6}.btn-sub{background:white;color:var(--text-primary);border:1px solid var(--border-color);padding:7px 12px;border-radius:18px;cursor:pointer;font-weight:600;font-size:12px}.btn-danger{color:var(--apple-red);border:1px solid var(--apple-red);background:white;padding:7px 12px;font-size:12px;border-radius:18px;cursor:pointer}.btn-filled-green{background:var(--apple-green);color:white;border:0;padding:4px 12px;font-size:11px;border-radius:12px;cursor:pointer}.action-icon{border:0;background:transparent;cursor:pointer;color:var(--text-secondary)}
+    .dashboard{display:flex;flex-direction:column;gap:16px}@media(min-width:1024px){.dashboard{display:grid;grid-template-columns:1fr 1.2fr 1.2fr;gap:24px;height:calc(100vh - 138px);min-height:650px}}
+    .panel{background:var(--card-bg);border-radius:var(--radius-sf);display:flex;flex-direction:column;box-shadow:0 4px 20px rgba(0,0,0,.04);border:1px solid rgba(0,0,0,.02);overflow:hidden;min-height:350px}@media(min-width:1024px){.panel{min-height:auto}}
+    .panel-split{display:flex;flex-direction:column;gap:16px;background:transparent;box-shadow:none;border:0;overflow:hidden}@media(min-width:1024px){.panel-split{display:grid;grid-template-rows:1fr 1fr;gap:16px}}
+    .sub-panel{background:var(--card-bg);border-radius:var(--radius-sf);border:1px solid rgba(0,0,0,.04);display:flex;flex-direction:column;box-shadow:0 4px 20px rgba(0,0,0,.04);overflow:hidden;min-height:250px}@media(min-width:1024px){.sub-panel{min-height:auto}}
+    .panel-header{padding:14px 16px;font-weight:600;font-size:14px;border-bottom:1px solid var(--border-color);display:flex;justify-content:space-between;align-items:center;gap:8px;background:white}.panel-body{padding:16px;flex:1;overflow-y:auto}.cal-edit-group{display:flex;gap:4px;flex-wrap:wrap}.btn-cal-action{padding:4px 8px;font-size:11px;border-radius:6px;font-weight:600;cursor:pointer;border:1px solid var(--border-color);background:white}.btn-cal-action.add{color:var(--apple-blue);border-color:rgba(0,113,227,.3)}.btn-cal-action.del{color:var(--apple-red);border-color:rgba(255,59,48,.3)}.calendar-wrapper{width:100%;height:100%;min-height:320px;border:0;border-radius:8px}.calendar-note{font-size:11px;color:var(--text-secondary);padding:8px 12px;border-bottom:1px solid #eee;background:#fafafa;line-height:1.4}
+    input[type="text"],textarea{font-family:inherit;color:var(--text-primary);border:1px solid var(--border-color);border-radius:8px;padding:8px 12px;background:#fafafa;font-size:14px;width:100%;box-sizing:border-box}.task-group{background:#fafafa;border-radius:var(--radius-sf);margin-bottom:16px;border:1px solid rgba(0,0,0,.03);overflow:hidden}.task-group-title{padding:12px 16px;background:#f1f1f4;font-weight:600;font-size:13px;display:flex;justify-content:space-between;align-items:center}.task-group-title input.title-edit{border:0;background:transparent;font-weight:600;font-size:13px;width:65%}.todo-item{display:flex;align-items:center;padding:10px 14px;gap:10px;background:white;border-left:4px solid transparent}.todo-item+.todo-item{border-top:1px solid #f5f5f7}.todo-item.active-link{background:#e3efff!important;border-left:4px solid var(--apple-blue)}.todo-item input[type="text"]{flex:1;border:0;background:transparent;padding:4px 6px;font-size:13px}.todo-item input[type="checkbox"]{appearance:none;width:18px;height:18px;border:1.5px solid var(--border-color);border-radius:50%;cursor:pointer;position:relative;flex-shrink:0}.todo-item input[type="checkbox"]:checked{background:var(--apple-blue);border-color:var(--apple-blue)}.todo-item input[type="checkbox"]:checked:after{content:'✓';position:absolute;color:white;font-size:11px;font-weight:bold;top:50%;left:50%;transform:translate(-50%,-50%)}.todo-item.done input[type="text"]{text-decoration:line-through;color:var(--text-secondary)}.memo-target-title{font-size:12px;color:var(--apple-blue);font-weight:500;margin-bottom:8px}.record-area{width:100%;flex:1;resize:none;background:#fafafa;min-height:180px}.archive-list{display:flex;flex-direction:column;gap:8px}.archive-item{padding:10px 14px;background:#fafafa;border-radius:8px;border:1px solid rgba(0,0,0,.03);cursor:pointer;display:flex;justify-content:space-between;align-items:center}.archive-item.active-archive{background:#e3efff;border-color:var(--apple-blue)}.archive-meta{font-size:11px;color:var(--text-secondary)}.archive-title{font-size:13px;font-weight:600}.archive-preview{font-size:11px;color:var(--text-secondary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:200px}.has-memo-badge{font-size:9px;background:#e3efff;color:var(--apple-blue);padding:2px 6px;border-radius:10px;font-weight:bold}.empty-badge{font-size:9px;background:#eee;color:#aaa;padding:2px 6px;border-radius:10px}.hidden{display:none!important}
+  </style>
 </head>
 <body>
+  <header>
+    <div>
+      <h1>Master Dashboard v7.0</h1>
+      <div id="last-save" class="last-save">마지막 저장: -</div>
+    </div>
+    <div class="btn-group">
+      <button class="btn-main-save" onclick="saveCloudData(true)">💾 지금 저장</button>
+      <button class="btn-sub" onclick="loadCloudData(true)">⬇️ 최신 불러오기</button>
+      <button class="btn-sub" onclick="downloadBackup()">📦 백업</button>
+      <button class="btn-sub" onclick="document.getElementById('backup-file').click()">♻️ 복원</button>
+      <input id="backup-file" class="hidden" type="file" accept="application/json" onchange="restoreBackup(event)">
+      <span id="sync-status" class="sync-badge">⏳ 대기 상태</span>
+      <button class="btn-danger" onclick="clearData()">🔄 전체 초기화</button>
+    </div>
+  </header>
 
-    <header>
-        <h1>Master Dashboard v6.4</h1>
-        <div class="btn-group">
-            <button class="btn-main-save" onclick="saveCloudData()">💾 클라우드에 저장</button>
-            <span id="sync-status" class="sync-badge">⏳ 대기 상태</span>
-            <button class="btn-danger" onclick="clearData()">🔄 전체 초기화</button>
+  <div class="dashboard">
+    <div class="panel">
+      <div class="panel-header">
+        <span>🕒 구글 일정표</span>
+        <div class="cal-edit-group">
+          <button class="btn-cal-action add" onclick="openGoogleCalendarAddInline()">➕ 일정 추가</button>
+          <button class="btn-cal-action del" onclick="openGoogleCalendarEditInline()">✏️ 편집 모드</button>
+          <button class="btn-cal-action" onclick="openGoogleCalendarView()">👁️ 보기 모드</button>
+          <button class="btn-cal-action" onclick="setupCalendarAddress()">⚙️ 설정</button>
         </div>
-    </header>
-
-    <div class="dashboard">
-        <div class="panel">
-            <div class="panel-header">
-                <span>🕒 오늘의 일정 (구글 연동)</span>
-                <div class="cal-edit-group">
-                    <button class="btn-cal-action add" onclick="openGoogleCalendarAdd()">➕ 일정 추가</button>
-                    <button class="btn-cal-action del" onclick="openGoogleCalendarMain()">❌ 관리/삭제</button>
-                    <button class="btn-cal-action" style="color:var(--text-secondary);" onclick="setupCalendarAddress()">⚙️ 설정</button>
-                </div>
-            </div>
-            <div class="panel-body" style="padding: 0; overflow: hidden;">
-                <iframe id="gcal-iframe" class="calendar-wrapper" src="about:blank"></iframe>
-            </div>
-        </div>
-
-        <div class="panel">
-            <div class="panel-header">
-                <span>🗂️ 주요 태스크별 To-Do</span>
-                <button class="btn-filled-green" onclick="addNewTaskGroup()">+ 태스크 추가</button>
-            </div>
-            <div class="panel-body" id="task-panel-body"></div>
-        </div>
-
-        <div class="panel panel-split">
-            <div class="sub-panel">
-                <div class="panel-header"><span>📝 메모 내용 열람 및 수정</span></div>
-                <div class="panel-body" style="display:flex; flex-direction:column;">
-                    <div id="memo-target-display" class="memo-target-title">📌 To-Do 항목을 선택하세요.</div>
-                    <textarea id="record-text" class="record-area" disabled placeholder="할 일을 선택하면 전용 메모장이 활성화됩니다." oninput="updateMemoLocal(this.value)"></textarea>
-                </div>
-            </div>
-
-            <div class="sub-panel">
-                <div class="panel-header"><span>🗄️ 메모 아카이브 목록</span></div>
-                <div class="panel-body" id="memo-archive-container"></div>
-            </div>
-        </div>
+      </div>
+      <div class="calendar-note">보기 모드는 대시보드 안에서 구글 일정을 표시합니다. 구글 보안 정책상 편집 화면이 iframe에서 차단될 수 있어, 차단되면 버튼으로 새 탭 편집을 사용하세요.</div>
+      <div class="panel-body" style="padding:0;overflow:hidden;display:flex;flex-direction:column;">
+        <iframe id="gcal-iframe" class="calendar-wrapper" src="about:blank"></iframe>
+      </div>
     </div>
 
-    <script>
-        const SUPABASE_URL = 'https://janalakgduwqoyzimuku.supabase.co';
-        const SUPABASE_KEY = 'sb_publishable_5bYHyOYBYE8aeOLpB9TYEw_-5mXb6Bi';
-        
-        const clientDb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
-            auth: { persistSession: false, autoRefreshToken: false },
-            global: { headers: { 'apikey': SUPABASE_KEY } }
+    <div class="panel">
+      <div class="panel-header"><span>🗂️ 주요 태스크별 To-Do</span><button class="btn-filled-green" onclick="addNewTaskGroup()">+ 태스크 추가</button></div>
+      <div class="panel-body" id="task-panel-body"></div>
+    </div>
+
+    <div class="panel panel-split">
+      <div class="sub-panel">
+        <div class="panel-header"><span>📝 메모 내용 열람 및 수정</span></div>
+        <div class="panel-body" style="display:flex;flex-direction:column;">
+          <div id="memo-target-display" class="memo-target-title">📌 To-Do 항목을 선택하세요.</div>
+          <textarea id="record-text" class="record-area" disabled placeholder="할 일을 선택하면 전용 메모장이 활성화됩니다." oninput="updateMemoLocal(this.value)"></textarea>
+        </div>
+      </div>
+      <div class="sub-panel">
+        <div class="panel-header"><span>🗄️ 메모 아카이브 목록</span></div>
+        <div class="panel-body" id="memo-archive-container"></div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const SUPABASE_URL = 'https://janalakgduwqoyzimuku.supabase.co';
+    const SUPABASE_KEY = 'sb_publishable_5bYHyOYBYE8aeOLpB9TYEw_-5mXb6Bi';
+    const USER_CHANNEL = 'yjd2020';
+    const AUTOSAVE_DELAY_MS = 5000;
+
+    const clientDb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
+      auth: { persistSession: false, autoRefreshToken: false },
+      global: { headers: { apikey: SUPABASE_KEY } },
+      realtime: { params: { eventsPerSecond: 2 } }
+    });
+
+    let memoStorage = {};
+    let currentActiveTodoId = null;
+    let googleCalendarUrl = '';
+    let lastLoadedAt = null;
+    let hasLocalChanges = false;
+    let autoSaveTimer = null;
+    const deviceId = localStorage.getItem('dashboard_device_id') || ('dev-' + Date.now() + '-' + Math.random().toString(36).slice(2));
+    localStorage.setItem('dashboard_device_id', deviceId);
+
+    window.onload = async function () {
+      setStatus('🔄 클라우드 최신 데이터 로드 중...');
+      await loadCloudData(false);
+      subscribeRealtime();
+      loadCalendar();
+    };
+
+    function setStatus(text) { document.getElementById('sync-status').innerText = text; }
+    function updateLastSaveLabel(value) {
+      document.getElementById('last-save').innerText = value ? ('마지막 저장: ' + new Date(value).toLocaleString('ko-KR')) : '마지막 저장: -';
+    }
+    function nowIso() { return new Date().toISOString(); }
+
+    function scheduleAutoSave() {
+      clearTimeout(autoSaveTimer);
+      autoSaveTimer = setTimeout(() => saveCloudData(false), AUTOSAVE_DELAY_MS);
+    }
+
+    function markAsChanged() {
+      hasLocalChanges = true;
+      setStatus('⚠️ 변경됨 · 5초 후 자동 저장');
+      scheduleAutoSave();
+    }
+
+    async function loadCloudData(manual) {
+      try {
+        const { data, error } = await clientDb.from('user_dashboards').select('content').eq('user_id', USER_CHANNEL).maybeSingle();
+        if (error) throw error;
+        if (data && data.content) {
+          applyCloudContent(data.content);
+          setStatus(manual ? '✅ 최신 데이터 다시 불러옴' : '✅ 최신 상태 동기화 완료');
+        } else {
+          setDefaultTasks();
+          lastLoadedAt = nowIso();
+          updateLastSaveLabel(null);
+          setStatus('🆕 새 대시보드 구동');
+        }
+      } catch (e) {
+        console.error('loadCloudData error:', e);
+        const backup = localStorage.getItem('dashData_backup');
+        if (backup) {
+          applyCloudContent(JSON.parse(backup));
+          setStatus('🔒 브라우저 백업 데이터로 구동');
+        } else {
+          setDefaultTasks();
+          setStatus('⚠️ 클라우드 로드 실패');
+        }
+      }
+    }
+
+    function applyCloudContent(content) {
+      memoStorage = content.memoStorage || {};
+      googleCalendarUrl = content.googleCalendarUrl || '';
+      renderAllData(content);
+      const meta = content.meta || {};
+      lastLoadedAt = meta.updatedAt || nowIso();
+      hasLocalChanges = false;
+      clearTimeout(autoSaveTimer);
+      updateLastSaveLabel(meta.updatedAt);
+      loadCalendar();
+    }
+
+    async function saveCloudData(manual) {
+      const recordTextarea = document.getElementById('record-text');
+      if (currentActiveTodoId && recordTextarea && !recordTextarea.disabled) memoStorage[currentActiveTodoId] = recordTextarea.value;
+      const data = collectAllData();
+      data.meta = { updatedAt: nowIso(), deviceId, appVersion: 'v7.0' };
+
+      try {
+        setStatus(manual ? '📤 클라우드 저장 중...' : '📤 자동 저장 중...');
+        const { data: remote, error: readError } = await clientDb.from('user_dashboards').select('content').eq('user_id', USER_CHANNEL).maybeSingle();
+        if (readError) throw readError;
+        const remoteUpdatedAt = remote && remote.content && remote.content.meta ? remote.content.meta.updatedAt : null;
+        const remoteDeviceId = remote && remote.content && remote.content.meta ? remote.content.meta.deviceId : null;
+        if (remoteUpdatedAt && lastLoadedAt && new Date(remoteUpdatedAt) > new Date(lastLoadedAt) && remoteDeviceId !== deviceId) {
+          if (!confirm('다른 기기에서 더 최신 데이터가 저장되어 있습니다. 현재 화면으로 덮어쓸까요?\n취소를 누르면 최신 데이터를 불러옵니다.')) {
+            await loadCloudData(true);
+            return;
+          }
+        }
+        const { error } = await clientDb.from('user_dashboards').upsert({ user_id: USER_CHANNEL, content: data }, { onConflict: 'user_id' });
+        if (error) throw error;
+        lastLoadedAt = data.meta.updatedAt;
+        hasLocalChanges = false;
+        localStorage.setItem('dashData_backup', JSON.stringify(data));
+        updateLastSaveLabel(data.meta.updatedAt);
+        setStatus(manual ? '✅ 클라우드 저장 완료' : '✅ 자동 저장 완료');
+      } catch (e) {
+        console.error('saveCloudData error:', e);
+        localStorage.setItem('dashData_backup', JSON.stringify(data));
+        setStatus('❌ 클라우드 저장 실패 · 브라우저 백업');
+        if (manual) alert('클라우드 저장에 실패했습니다.\n\n오류 내용: ' + (e.message || e));
+      }
+    }
+
+    function subscribeRealtime() {
+      clientDb.channel('dashboard-sync-' + USER_CHANNEL)
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'user_dashboards', filter: 'user_id=eq.' + USER_CHANNEL }, payload => {
+          const content = payload.new && payload.new.content ? payload.new.content : null;
+          if (!content || !content.meta || content.meta.deviceId === deviceId) return;
+          if (hasLocalChanges) {
+            setStatus('🟠 다른 기기 변경 감지 · 저장 또는 최신 불러오기 선택');
+            return;
+          }
+          applyCloudContent(content);
+          setStatus('🔄 다른 기기 변경사항 자동 반영');
+        })
+        .subscribe(status => console.log('Realtime status:', status));
+    }
+
+    function openGoogleCalendarView() { loadCalendar(); }
+    function openGoogleCalendarAddInline() {
+      const iframe = document.getElementById('gcal-iframe');
+      iframe.src = 'https://calendar.google.com/calendar/render?action=TEMPLATE&ctz=Asia%2FSeoul';
+      setStatus('🗓️ 일정 추가 화면 시도 중');
+    }
+    function openGoogleCalendarEditInline() {
+      const iframe = document.getElementById('gcal-iframe');
+      iframe.src = 'https://calendar.google.com/calendar/u/0/r?ctz=Asia%2FSeoul';
+      setStatus('✏️ 구글 편집 화면 시도 중 · 차단되면 새 탭 사용');
+      setTimeout(() => {
+        if (confirm('구글 보안 정책 때문에 편집 화면이 대시보드 안에서 보이지 않을 수 있습니다. 새 탭으로 열까요?')) {
+          window.open('https://calendar.google.com/calendar/u/0/r?ctz=Asia%2FSeoul', '_blank');
+        }
+      }, 1200);
+    }
+    function setupCalendarAddress() {
+      const msg = '구글 캘린더 공개/공유 iframe 또는 embed URL을 입력하세요.\n예: https://calendar.google.com/calendar/embed?...';
+      const userUrl = prompt(msg, googleCalendarUrl);
+      if (userUrl !== null) {
+        googleCalendarUrl = userUrl.trim();
+        loadCalendar();
+        markAsChanged();
+      }
+    }
+    function loadCalendar() {
+      const iframe = document.getElementById('gcal-iframe');
+      if (googleCalendarUrl && googleCalendarUrl.trim() !== '') {
+        let targetUrl = googleCalendarUrl.trim();
+        if (targetUrl.includes('/render')) targetUrl = targetUrl.replace('/render', '/embed');
+        if (!targetUrl.includes('mode=')) targetUrl += (targetUrl.includes('?') ? '&' : '?') + 'mode=AGENDA&wkst=1&bgcolor=%23ffffff&ctz=Asia%2FSeoul';
+        iframe.src = targetUrl;
+      } else {
+        iframe.srcdoc = '<div style="font-family:sans-serif;color:#86868b;text-align:center;margin-top:100px;font-size:12px;padding:20px;line-height:1.6;">[⚙️ 설정]을 눌러 구글 캘린더 embed URL을 입력하세요.<br>보기는 대시보드 안에서 가능하며, 편집은 Google 계정 보안 정책에 따라 새 탭이 필요할 수 있습니다.</div>';
+      }
+    }
+
+    function setDefaultTasks() {
+      document.getElementById('task-panel-body').innerHTML = '';
+      addNewTaskGroup('🏛️ 협회(KIA) 관련 업무');
+      addNewTaskGroup('🏗️ 도시·건축 프로젝트 / 마스터플랜');
+      addNewTaskGroup('🎓 위원회·자문 / 대학 강의');
+    }
+    function renderAllData(data) {
+      document.getElementById('task-panel-body').innerHTML = '';
+      if (data.taskGroups && data.taskGroups.length > 0) data.taskGroups.forEach(g => addNewTaskGroup(g.title, g.todos));
+      else setDefaultTasks();
+      resetMemoArea();
+      refreshMemoArchiveList();
+    }
+    function addNewTaskGroup(titleText = '새 태스크 그룹', todosArray = []) {
+      const container = document.getElementById('task-panel-body');
+      const groupId = 'group-' + Date.now() + Math.random().toString(36).slice(2, 7);
+      const groupDiv = document.createElement('div');
+      groupDiv.className = 'task-group';
+      groupDiv.id = groupId;
+      groupDiv.innerHTML = '<div class="task-group-title"><input type="text" class="title-edit" value="' + escapeHtml(titleText) + '" onchange="markAsChanged()" oninput="markAsChanged()"><div><button class="action-icon" onclick="addTodoItem(\'' + groupId + '\')" style="color:var(--apple-blue);font-weight:bold;font-size:11px;">+ 할일</button><button class="action-icon" onclick="removeTaskGroup(\'' + groupId + '\')">✕</button></div></div><div class="todo-container" id="todo-container-' + groupId + '"></div>';
+      container.appendChild(groupDiv);
+      if (todosArray.length > 0) todosArray.forEach(t => addTodoItem(groupId, t.text, t.checked, t.id));
+      else addTodoItem(groupId);
+      refreshMemoArchiveList();
+    }
+    function removeTaskGroup(groupId) {
+      if (confirm('태스크 그룹을 삭제하시겠습니까?')) {
+        document.getElementById(groupId).remove(); resetMemoArea(); refreshMemoArchiveList(); markAsChanged();
+      }
+    }
+    function addTodoItem(groupId, text = '', checked = false, existingId = null) {
+      const container = document.getElementById('todo-container-' + groupId);
+      const todoId = existingId || 'todo-' + Date.now() + Math.random().toString(36).slice(2, 7);
+      const div = document.createElement('div');
+      div.className = 'todo-item ' + (checked ? 'done' : '');
+      div.id = todoId;
+      div.innerHTML = '<input type="checkbox" ' + (checked ? 'checked' : '') + ' onchange="toggleTodo(this)"><input type="text" value="' + escapeHtml(text) + '" placeholder="할 일 입력..." onfocus="selectTodoItem(\'' + todoId + '\')" onchange="markAsChanged()" oninput="syncMemoHeader(\'' + todoId + '\', this.value); markAsChanged();"><button class="action-icon" onclick="deleteTodoItem(\'' + todoId + '\')">✕</button>';
+      container.appendChild(div);
+      if (memoStorage[todoId] === undefined) memoStorage[todoId] = '';
+      refreshMemoArchiveList(); markAsChanged();
+    }
+    function deleteTodoItem(todoId) {
+      document.getElementById(todoId).remove(); delete memoStorage[todoId]; if (currentActiveTodoId === todoId) resetMemoArea(); refreshMemoArchiveList(); markAsChanged();
+    }
+    function toggleTodo(chk) { chk.parentElement.classList.toggle('done', chk.checked); markAsChanged(); }
+    function selectTodoItem(todoId) {
+      const recordTextarea = document.getElementById('record-text');
+      if (currentActiveTodoId && recordTextarea && !recordTextarea.disabled) memoStorage[currentActiveTodoId] = recordTextarea.value;
+      document.querySelectorAll('.todo-item').forEach(el => el.classList.remove('active-link'));
+      document.querySelectorAll('.archive-item').forEach(el => el.classList.remove('active-archive'));
+      const todoEl = document.getElementById(todoId); if (!todoEl) return;
+      todoEl.classList.add('active-link'); const archiveEl = document.getElementById('archive-' + todoId); if (archiveEl) archiveEl.classList.add('active-archive'); currentActiveTodoId = todoId;
+      const todoText = todoEl.querySelector('input[type="text"]').value || '내용 없음';
+      const groupTitle = todoEl.closest('.task-group').querySelector('.title-edit').value;
+      document.getElementById('memo-target-display').innerText = '📌 [' + groupTitle + '] ➔ "' + todoText + '"';
+      const textarea = document.getElementById('record-text'); textarea.disabled = false; textarea.value = memoStorage[todoId] || ''; refreshMemoArchiveList();
+    }
+    function syncMemoHeader(todoId, val) {
+      if (currentActiveTodoId === todoId) {
+        const todoEl = document.getElementById(todoId); const groupTitle = todoEl.closest('.task-group').querySelector('.title-edit').value;
+        document.getElementById('memo-target-display').innerText = '📌 [' + groupTitle + '] ➔ "' + (val || '내용 없음') + '"';
+      }
+      const archiveTitleEl = document.querySelector('#archive-' + todoId + ' .archive-title'); if (archiveTitleEl) archiveTitleEl.innerText = val || '내용 없음';
+    }
+    function updateMemoLocal(val) {
+      if (currentActiveTodoId) {
+        memoStorage[currentActiveTodoId] = val;
+        const previewEl = document.querySelector('#archive-' + currentActiveTodoId + ' .archive-preview'); if (previewEl) previewEl.innerText = val ? val.replace(/\n/g, ' ') : '작성된 메모가 없습니다.';
+        markAsChanged();
+      }
+    }
+    function refreshMemoArchiveList() {
+      const container = document.getElementById('memo-archive-container'); container.innerHTML = '';
+      const groups = document.querySelectorAll('#task-panel-body .task-group'); if (groups.length === 0) return;
+      const wrapper = document.createElement('div'); wrapper.className = 'archive-list';
+      groups.forEach(group => {
+        const groupTitle = group.querySelector('.title-edit').value;
+        group.querySelectorAll('.todo-item').forEach(todo => {
+          const todoId = todo.id; const todoText = todo.querySelector('input[type="text"]').value || '내용 없음'; const memoText = memoStorage[todoId] || ''; const hasMemo = memoText && memoText.trim().length > 0;
+          const itemDiv = document.createElement('div'); itemDiv.className = 'archive-item ' + (currentActiveTodoId === todoId ? 'active-archive' : ''); itemDiv.id = 'archive-' + todoId; itemDiv.onclick = () => selectTodoItem(todoId);
+          itemDiv.innerHTML = '<div style="flex:1;overflow:hidden;"><div class="archive-meta">' + escapeHtml(groupTitle) + '</div><div class="archive-title">' + escapeHtml(todoText) + '</div><div class="archive-preview">' + escapeHtml(hasMemo ? memoText.replace(/\n/g, ' ') : '작성된 메모가 없습니다.') + '</div></div><div class="badge-zone" style="margin-left:8px;">' + (hasMemo ? '<span class="has-memo-badge">메모보유</span>' : '<span class="empty-badge">비어있음</span>') + '</div>';
+          wrapper.appendChild(itemDiv);
         });
-
-        let memoStorage = {};
-        let currentActiveTodoId = null;
-        let googleCalendarUrl = "";
-        const USER_CHANNEL = 'yjd2020';
-
-
-        function decodeJwtPayload(token) {
-            try {
-                const payload = token.split('.')[1];
-                if (!payload) return null;
-                const normalized = payload.replace(/-/g, '+').replace(/_/g, '/');
-                const padded = normalized + '='.repeat((4 - normalized.length % 4) % 4);
-                return JSON.parse(decodeURIComponent(escape(atob(padded))));
-            } catch (e) { return null; }
-        }
-
-        function validateSupabaseConfig() {
-            if (!SUPABASE_URL || !SUPABASE_URL.includes('.supabase.co')) {
-                return 'Supabase URL 형식이 올바르지 않습니다.';
-            }
-            if (!SUPABASE_KEY || SUPABASE_KEY.includes('PASTE_YOUR_SUPABASE')) {
-                return 'Supabase API Key가 아직 입력되지 않았습니다. Settings > API Keys에서 publishable key 또는 legacy anon key를 붙여넣으세요.';
-            }
-            const projectRef = SUPABASE_URL.replace('https://', '').split('.')[0];
-            const payload = decodeJwtPayload(SUPABASE_KEY);
-            // legacy anon key는 JWT라서 ref를 검사할 수 있습니다. 새 publishable key는 JWT가 아닐 수 있으므로 통과시킵니다.
-            if (payload && payload.ref && payload.ref !== projectRef) {
-                return `Supabase API Key의 project ref(${payload.ref})와 URL의 project ref(${projectRef})가 다릅니다. 같은 프로젝트의 API Key를 다시 복사해야 합니다.`;
-            }
-            return null;
-        }
-
-        async function testSupabaseReachability() {
-            const configError = validateSupabaseConfig();
-            if (configError) throw new Error(configError);
-            const res = await fetch(`${SUPABASE_URL}/rest/v1/`, {
-                method: 'GET',
-                headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` }
-            });
-            if (!res.ok && ![200, 404, 401].includes(res.status)) {
-                const txt = await res.text().catch(() => '');
-                throw new Error(`Supabase 연결 테스트 실패: HTTP ${res.status} ${txt}`);
-            }
-            return true;
-        }
-
-        // [확실한 풀: Pull] 앱 구동 시 타 구성요소 간섭 없이 클라우드 데이터를 최우선 강제 동기화 로드
-        window.onload = async function() {
-            const configError = validateSupabaseConfig();
-            if (configError) {
-                document.getElementById('sync-status').innerText = "⚠️ Supabase 설정 필요";
-                alert("Supabase 설정 오류:\n" + configError);
-                setDefaultTasks();
-                loadCalendar();
-                return;
-            }
-            document.getElementById('sync-status').innerText = "🔄 클라우드에서 최신 데이터를 땡겨오는 중 (Pull)...";
-            await loadCloudData();
-            loadCalendar();
-        }
-
-        async function loadCloudData() {
-            try {
-                const { data, error } = await clientDb
-                    .from('user_dashboards')
-                    .select('content')
-                    .eq('user_id', USER_CHANNEL)
-                    .maybeSingle();
-
-                if (error) throw error;
-
-                if (data && data.content) {
-                    const cloudData = data.content;
-                    memoStorage = cloudData.memoStorage || {};
-                    googleCalendarUrl = cloudData.googleCalendarUrl || "";
-                    renderAllData(cloudData);
-                    document.getElementById('sync-status').innerText = "✅ 최신 상태 동기화 완료 (Pull)";
-                } else {
-                    const backup = localStorage.getItem('dashData_backup');
-                    if (backup) {
-                        const backupData = JSON.parse(backup);
-                        memoStorage = backupData.memoStorage || {};
-                        googleCalendarUrl = backupData.googleCalendarUrl || "";
-                        renderAllData(backupData);
-                        document.getElementById('sync-status').innerText = "🔒 브라우저 백업 데이터 로드됨";
-                    } else {
-                        setDefaultTasks();
-                        document.getElementById('sync-status').innerText = "🆕 새 대시보드 구동";
-                    }
-                }
-            } catch (e) {
-                console.error('Supabase 불러오기 오류:', e);
-                const backup = localStorage.getItem('dashData_backup');
-                if (backup) {
-                    const backupData = JSON.parse(backup);
-                    memoStorage = backupData.memoStorage || {};
-                    googleCalendarUrl = backupData.googleCalendarUrl || "";
-                    renderAllData(backupData);
-                    document.getElementById('sync-status').innerText = "🔒 클라우드 오류: 브라우저 백업 로드";
-                } else {
-                    setDefaultTasks();
-                    document.getElementById('sync-status').innerText = "❌ 클라우드 불러오기 실패";
-                }
-            }
-        }
-
-        // [확실한 푸시: Push] 현재 열려있는 돔(DOM)과 메모 버퍼 상태를 완벽 분리하여 즉시 강제 업로드
-        async function saveCloudData() {
-            // 버튼 클릭 시점의 최종 메모장 내용을 버퍼에 확실하게 고정
-            const recordTextarea = document.getElementById('record-text');
-            if (currentActiveTodoId && recordTextarea && !recordTextarea.disabled) {
-                memoStorage[currentActiveTodoId] = recordTextarea.value;
-            }
-
-            document.getElementById('sync-status').innerText = "📤 클라우드 저장 중...";
-            const data = collectAllData();
-            data.updatedAt = new Date().toISOString();
-
-            try {
-                const { error } = await clientDb
-                    .from('user_dashboards')
-                    .upsert(
-                        {
-                            user_id: USER_CHANNEL,
-                            content: data,
-                            updated_at: new Date().toISOString()
-                        },
-                        { onConflict: 'user_id' }
-                    );
-
-                if (error) throw error;
-
-                localStorage.setItem('dashData_backup', JSON.stringify(data));
-                document.getElementById('sync-status').innerText = "✅ 클라우드 저장 완료";
-                alert("최신 데이터가 클라우드에 저장되었습니다.\n다른 기기에서 열면 이 상태를 불러옵니다.");
-            } catch(e) {
-                console.error('Supabase 저장 오류:', e);
-                localStorage.setItem('dashData_backup', JSON.stringify(data));
-                document.getElementById('sync-status').innerText = "❌ 클라우드 저장 실패 / 브라우저 백업 완료";
-                alert("클라우드 저장에 실패했습니다.\n\n오류 내용: " + (e.message || JSON.stringify(e)) + "\n\n현재 데이터는 이 브라우저에 임시 보관했습니다. Supabase 테이블 설정과 RLS 정책을 확인해 주세요.");
-            }
-        }
-
-        function openGoogleCalendarAdd() { window.open("https://calendar.google.com/calendar/render?action=TEMPLATE", "_blank"); }
-        function openGoogleCalendarMain() { window.open("https://calendar.google.com/calendar", "_blank"); }
-
-        function setupCalendarAddress() {
-            const userUrl = prompt("구글 캘린더 [이 캘린더의 공개 URL] 주소를 입력해주세요.", googleCalendarUrl);
-            if (userUrl !== null) {
-                googleCalendarUrl = userUrl;
-                loadCalendar();
-                markAsChanged();
-            }
-        }
-
-        function loadCalendar() {
-            const iframe = document.getElementById('gcal-iframe');
-            if (googleCalendarUrl && googleCalendarUrl.trim() !== "") {
-                let targetUrl = googleCalendarUrl;
-                if(!targetUrl.includes("mode=")) {
-                    targetUrl += (targetUrl.includes("?") ? "&" : "?") + "mode=AGENDA&wkst=1&bgcolor=%23ffffff&ctz=Asia%2FSeoul";
-                }
-                iframe.src = targetUrl;
-            } else {
-                iframe.srcdoc = `<div style="font-family:sans-serif; color:#86868b; text-align:center; margin-top:100px; font-size:12px; padding:20px;">[⚙️ 설정]을 눌러 구글 캘린더 주소를 연동해 주세요.</div>`;
-            }
-        }
-
-        function setDefaultTasks() {
-            addNewTaskGroup('🏛️ 협회(KIA) 관련 업무');
-            addNewTaskGroup('🏗️ 도시·건축 프로젝트 / 마스터플랜');
-            addNewTaskGroup('🎓 위원회·자문 / 대학 강의');
-        }
-
-        function renderAllData(data) {
-            document.getElementById('task-panel-body').innerHTML = '';
-            if(data.taskGroups && data.taskGroups.length > 0) {
-                data.taskGroups.forEach(g => addNewTaskGroup(g.title, g.todos));
-            } else { setDefaultTasks(); }
-            resetMemoArea();
-            refreshMemoArchiveList();
-        }
-
-        function addNewTaskGroup(titleText = '새 태스크 그룹', todosArray = []) {
-            const container = document.getElementById('task-panel-body');
-            const groupId = 'group-' + Date.now() + Math.random().toString(36).substr(2, 5);
-            const groupDiv = document.createElement('div');
-            groupDiv.className = 'task-group';
-            groupDiv.id = groupId;
-            groupDiv.innerHTML = `
-                <div class="task-group-title">
-                    <input type="text" class="title-edit" value="${titleText}" onchange="markAsChanged()">
-                    <div>
-                        <button class="action-icon" onclick="addTodoItem('${groupId}')" style="color:var(--apple-blue); font-weight:bold; font-size:11px; border:none; background:none; cursor:pointer;">+ 할일</button>
-                        <button class="action-icon" onclick="removeTaskGroup('${groupId}')" style="border:none; background:none; cursor:pointer;">✕</button>
-                    </div>
-                </div>
-                <div class="todo-container" id="todo-container-${groupId}"></div>
-            `;
-            container.appendChild(groupDiv);
-
-            if(todosArray.length > 0) {
-                todosArray.forEach(t => addTodoItem(groupId, t.text, t.checked, t.id));
-            } else { addTodoItem(groupId); }
-            refreshMemoArchiveList();
-        }
-
-        function removeTaskGroup(groupId) {
-            if(confirm('태스크 그룹을 삭제하시겠습니까?')) {
-                document.getElementById(groupId).remove();
-                resetMemoArea();
-                refreshMemoArchiveList();
-                markAsChanged();
-            }
-        }
-
-        function addTodoItem(groupId, text = '', checked = false, existingId = null) {
-            const container = document.getElementById(`todo-container-${groupId}`);
-            const todoId = existingId || 'todo-' + Date.now() + Math.random().toString(36).substr(2, 5);
-            const div = document.createElement('div');
-            div.className = `todo-item ${checked ? 'done' : ''}`;
-            div.id = todoId;
-            div.innerHTML = `
-                <input type="checkbox" ${checked ? 'checked' : ''} onchange="toggleTodo(this)">
-                <input type="text" value="${text}" placeholder="할 일 입력..." onfocus="selectTodoItem('${todoId}')" onchange="markAsChanged()" oninput="syncMemoHeader('${todoId}', this.value)">
-                <button class="action-icon" onclick="deleteTodoItem('${todoId}')" style="border:none; background:none; cursor:pointer;">✕</button>
-            `;
-            container.appendChild(div);
-            if(memoStorage[todoId] === undefined) { memoStorage[todoId] = ""; }
-            refreshMemoArchiveList();
-        }
-
-        function deleteTodoItem(todoId) {
-            document.getElementById(todoId).remove();
-            delete memoStorage[todoId];
-            if(currentActiveTodoId === todoId) { resetMemoArea(); }
-            refreshMemoArchiveList();
-            markAsChanged();
-        }
-
-        function toggleTodo(chk) {
-            if(chk.checked) chk.parentElement.classList.add('done');
-            else chk.parentElement.classList.remove('done');
-            markAsChanged();
-        }
-
-        function selectTodoItem(todoId) {
-            // 다른 항목으로 포커스가 넘어가기 직전 상태의 메모 서식을 임시 캐시에 즉시 강제 바인딩
-            const recordTextarea = document.getElementById('record-text');
-            if (currentActiveTodoId && recordTextarea && !recordTextarea.disabled) {
-                memoStorage[currentActiveTodoId] = recordTextarea.value;
-            }
-
-            document.querySelectorAll('.todo-item').forEach(el => el.classList.remove('active-link'));
-            document.querySelectorAll('.archive-item').forEach(el => el.classList.remove('active-archive'));
-            const todoEl = document.getElementById(todoId);
-            if (!todoEl) return;
-            todoEl.classList.add('active-link');
-            const archiveEl = document.getElementById('archive-' + todoId);
-            if(archiveEl) archiveEl.classList.add('active-archive');
-            currentActiveTodoId = todoId;
-            
-            const todoText = todoEl.querySelector('input[type="text"]').value || "내용 없음";
-            const groupTitle = todoEl.closest('.task-group').querySelector('.title-edit').value;
-            document.getElementById('memo-target-display').innerText = `📌 [${groupTitle}] ➔ "${todoText}"`;
-            
-            const textarea = document.getElementById('record-text');
-            textarea.disabled = false;
-            textarea.value = memoStorage[todoId] || "";
-            refreshMemoArchiveList();
-        }
-
-        function syncMemoHeader(todoId, val) {
-            if(currentActiveTodoId === todoId) {
-                const todoEl = document.getElementById(todoId);
-                const groupTitle = todoEl.closest('.task-group').querySelector('.title-edit').value;
-                document.getElementById('memo-target-display').innerText = `📌 [${groupTitle}] ➔ "${val || '내용 없음'}"`;
-            }
-            const archiveTitleEl = document.querySelector(`#archive-${todoId} .archive-title`);
-            if(archiveTitleEl) archiveTitleEl.innerText = val || "내용 없음";
-        }
-
-        function updateMemoLocal(val) {
-            if(currentActiveTodoId) {
-                memoStorage[currentActiveTodoId] = val;
-                const previewEl = document.querySelector(`#archive-${currentActiveTodoId} .archive-preview`);
-                if(previewEl) previewEl.innerText = val ? val.replace(/\n/g, ' ') : "작성된 메모가 없습니다.";
-                markAsChanged();
-            }
-        }
-
-        function markAsChanged() {
-            document.getElementById('sync-status').innerText = "⚠️ 변경됨 (저장 버튼 클릭 필요)";
-        }
-
-        function refreshMemoArchiveList() {
-            const container = document.getElementById('memo-archive-container');
-            container.innerHTML = '';
-            const groups = document.querySelectorAll('#task-panel-body .task-group');
-            if(groups.length === 0) return;
-            const wrapper = document.createElement('div');
-            wrapper.className = 'archive-list';
-            groups.forEach(group => {
-                const groupTitle = group.querySelector('.title-edit').value;
-                const todos = group.querySelectorAll('.todo-item');
-                todos.forEach(todo => {
-                    const todoId = todo.id;
-                    const todoText = todo.querySelector('input[type="text"]').value || "내용 없음";
-                    const memoText = memoStorage[todoId] || "";
-                    const hasMemo = memoText && memoText.trim().length > 0;
-                    const itemDiv = document.createElement('div');
-                    itemDiv.className = `archive-item ${currentActiveTodoId === todoId ? 'active-archive' : ''}`;
-                    itemDiv.id = 'archive-' + todoId;
-                    itemDiv.onclick = function() { selectTodoItem(todoId); };
-                    itemDiv.innerHTML = `
-                        <div style="flex:1; overflow:hidden;">
-                            <div class="archive-meta">${groupTitle}</div>
-                            <div class="archive-title">${todoText}</div>
-                            <div class="archive-preview">${hasMemo ? memoText.replace(/\n/g, ' ') : '작성된 메모가 없습니다.'}</div>
-                        </div>
-                        <div class="badge-zone" style="margin-left:8px;">
-                            ${hasMemo ? '<span class="has-memo-badge">메모보유</span>' : '<span class="empty-badge">비어있음</span>'}
-                        </div>
-                    `;
-                    wrapper.appendChild(itemDiv);
-                });
-            });
-            container.appendChild(wrapper);
-        }
-
-        function resetMemoArea() {
-            currentActiveTodoId = null;
-            document.getElementById('memo-target-display').innerText = "📌 To-Do 항목을 선택하세요.";
-            const textarea = document.getElementById('record-text');
-            textarea.value = "";
-            textarea.disabled = true;
-        }
-
-        function collectAllData() {
-            const taskGroupsData = [];
-            document.querySelectorAll('#task-panel-body .task-group').forEach(group => {
-                const title = group.querySelector('.title-edit').value;
-                const todos = [];
-                group.querySelectorAll('.todo-item').forEach(todo => {
-                    todos.push({ id: todo.id, checked: todo.querySelector('input[type="checkbox"]').checked, text: todo.querySelector('input[type="text"]').value });
-                });
-                taskGroupsData.push({ title, todos });
-            });
-            return { taskGroups: taskGroupsData, memoStorage: memoStorage, googleCalendarUrl: googleCalendarUrl };
-        }
-
-        async function clearData() {
-            if(confirm('모든 데이터를 초기화하시겠습니까?')) {
-                try {
-                    document.getElementById('sync-status').innerText = "🔄 초기화 중...";
-                    const { error } = await clientDb
-                        .from('user_dashboards')
-                        .delete()
-                        .eq('user_id', USER_CHANNEL);
-
-                    if (error) throw error;
-
-                    localStorage.removeItem('dashData_backup');
-                    location.reload();
-                } catch (e) {
-                    console.error('초기화 오류:', e);
-                    alert("초기화 중 오류가 발생했습니다.\n\n오류 내용: " + (e.message || JSON.stringify(e)));
-                    document.getElementById('sync-status').innerText = "❌ 초기화 실패";
-                }
-            }
-        }
-    </script>
+      });
+      container.appendChild(wrapper);
+    }
+    function resetMemoArea() { currentActiveTodoId = null; document.getElementById('memo-target-display').innerText = '📌 To-Do 항목을 선택하세요.'; const textarea = document.getElementById('record-text'); textarea.value = ''; textarea.disabled = true; }
+    function collectAllData() {
+      const taskGroupsData = [];
+      document.querySelectorAll('#task-panel-body .task-group').forEach(group => {
+        const title = group.querySelector('.title-edit').value; const todos = [];
+        group.querySelectorAll('.todo-item').forEach(todo => todos.push({ id: todo.id, checked: todo.querySelector('input[type="checkbox"]').checked, text: todo.querySelector('input[type="text"]').value }));
+        taskGroupsData.push({ title, todos });
+      });
+      return { taskGroups: taskGroupsData, memoStorage, googleCalendarUrl };
+    }
+    async function clearData() {
+      if (confirm('모든 클라우드/브라우저 데이터를 초기화하시겠습니까?')) {
+        setStatus('🔄 초기화 중...');
+        await clientDb.from('user_dashboards').delete().eq('user_id', USER_CHANNEL);
+        localStorage.removeItem('dashData_backup');
+        location.reload();
+      }
+    }
+    function downloadBackup() {
+      const data = collectAllData(); data.meta = { updatedAt: nowIso(), deviceId, appVersion: 'v7.0-backup' };
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+      const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'dashboard_backup_' + new Date().toISOString().slice(0, 10) + '.json'; a.click(); URL.revokeObjectURL(a.href);
+    }
+    function restoreBackup(event) {
+      const file = event.target.files[0]; if (!file) return;
+      const reader = new FileReader();
+      reader.onload = e => {
+        try { const data = JSON.parse(e.target.result); applyCloudContent(data); markAsChanged(); alert('백업을 화면에 복원했습니다. 클라우드에 반영하려면 지금 저장을 누르세요.'); }
+        catch (err) { alert('백업 파일을 읽을 수 없습니다.'); }
+      };
+      reader.readAsText(file); event.target.value = '';
+    }
+    function escapeHtml(str) { return String(str || '').replace(/[&<>"]/g, s => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[s])); }
+  </script>
 </body>
 </html>
