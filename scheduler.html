@@ -4,7 +4,7 @@ HTML
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Master Dashboard v6.0 - Manual Save & Perfect Sync</title>
+    <title>Master Dashboard v6.2 - Perfect Sync (Push & Pull)</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
         :root {
@@ -112,7 +112,7 @@ HTML
 <body>
 
     <header>
-        <h1>Master Dashboard v6.0</h1>
+        <h1>Master Dashboard v6.2</h1>
         <div class="btn-group">
             <button class="btn-main-save" onclick="saveCloudData()">💾 클라우드에 저장</button>
             <span id="sync-status" class="sync-badge">⏳ 대기 상태</span>
@@ -160,19 +160,22 @@ HTML
     </div>
 
     <script>
-        // 전용 실시간 클라우드 호스팅 DB 키 보안 연동
         const SUPABASE_URL = 'https://xtfcrgswgquqehgclpka.supabase.co';
-        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inh0ZmNyZ3N3Z3F1cWVoZ2NscGthIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MTczMzYwMDAsImV4cCI6MjAyODkxMjAwMH0.1_K_uOQCvS7zVpG5rW9t8hF8XbZDxm646mU4_K3f0w8';
-        const clientDb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inh0ZmNyZ3N3Z3F1cWeoZ2NscGthIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MTczMzYwMDAsImV4cCI6MjAyODkxMjAwMH0.1_K_uOQCvS7zVpG5rW9t8hF8XbZDxm646mU4_K3f0w8';
+        
+        const clientDb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
+            auth: { persistSession: false, autoRefreshToken: false },
+            global: { headers: { 'apikey': SUPABASE_KEY } }
+        });
 
         let memoStorage = {};
         let currentActiveTodoId = null;
         let googleCalendarUrl = "";
         const USER_CHANNEL = 'yjd2020';
 
-        // 켜자마자 클라우드 보관소에 있던 데이터를 완벽하게 땡겨오는 메커니즘
+        // [확실한 풀: Pull] 앱 구동 시 타 구성요소 간섭 없이 클라우드 데이터를 최우선 강제 동기화 로드
         window.onload = async function() {
-            document.getElementById('sync-status').innerText = "🔄 데이터를 불러오는 중...";
+            document.getElementById('sync-status').innerText = "🔄 클라우드에서 최신 데이터를 땡겨오는 중 (Pull)...";
             await loadCloudData();
             loadCalendar();
         }
@@ -182,36 +185,42 @@ HTML
                 let { data, error } = await clientDb.from('user_dashboards').select('content').eq('user_id', USER_CHANNEL).single();
                 if (data && data.content) {
                     const cloudData = data.content;
-                    // 중앙 리스트와 우측 세부 메모 딕셔너리 완벽 동시 매핑
                     memoStorage = cloudData.memoStorage || {};
                     googleCalendarUrl = cloudData.googleCalendarUrl || "";
                     renderAllData(cloudData);
-                    document.getElementById('sync-status').innerText = "✅ 불러오기 성공";
+                    document.getElementById('sync-status').innerText = "✅ 최신 상태 동기화 완료 (Pull)";
                 } else {
                     setDefaultTasks();
                     document.getElementById('sync-status').innerText = "🆕 새 대시보드 구동";
                 }
             } catch (e) {
                 setDefaultTasks();
-                document.getElementById('sync-status').innerText = "⚠️ 로컬 모드 가동";
+                document.getElementById('sync-status').innerText = "⚠️ 로컬 보안 모드 가동";
             }
         }
 
-        // 수동 버튼 클릭 시 전 기기로 즉시 쏘아 올리는 확실한 수동 저장 코어 엔진
+        // [확실한 푸시: Push] 현재 열려있는 돔(DOM)과 메모 버퍼 상태를 완벽 분리하여 즉시 강제 업로드
         async function saveCloudData() {
-            document.getElementById('sync-status').innerText = "💾 저장 중...";
-            const data = collectAllData(); // 세부 항목까지 100% 압축 취합
+            // 버튼 클릭 시점의 최종 메모장 내용을 버퍼에 확실하게 고정
+            const recordTextarea = document.getElementById('record-text');
+            if (currentActiveTodoId && recordTextarea && !recordTextarea.disabled) {
+                memoStorage[currentActiveTodoId] = recordTextarea.value;
+            }
+
+            document.getElementById('sync-status').innerText = "📤 클라우드로 데이터를 밀어 넣는 중 (Push)...";
+            const data = collectAllData(); 
+            
             try {
                 const { error } = await clientDb.from('user_dashboards').upsert({ user_id: USER_CHANNEL, content: data });
                 if(!error) {
-                    document.getElementById('sync-status').innerText = "💯 클라우드 저장 완료";
-                    alert("세부 메모를 포함한 모든 데이터가 클라우드에 성공적으로 수동 보관되었습니다!\n이제 다른 기기에서 열어도 완벽히 연동됩니다.");
-                } else {
-                    throw error;
-                }
+                    document.getElementById('sync-status').innerText = "💯 클라우드 푸시 성공 (Push 완료)";
+                    alert("최신 데이터가 클라우드 보관소에 안전하게 푸시되었습니다.\n이제 다른 기기에서 켜시면 이 상태가 그대로 풀(Pull)되어 나타납니다.");
+                } else { throw error; }
             } catch(e) {
-                document.getElementById('sync-status').innerText = "❌ 저장 실패";
-                alert("저장 실패. 네트워크 상태를 확인해 주세요.");
+                console.error(e);
+                localStorage.setItem('dashData_backup', JSON.stringify(data));
+                document.getElementById('sync-status').innerText = "🔒 브라우저 안전 백업";
+                alert("통신 지연이 발생하여 안전하게 브라우저에 임시 보관했습니다.\n새로고침(F5) 후 다시 시도해 주십시오.");
             }
         }
 
@@ -223,7 +232,7 @@ HTML
             if (userUrl !== null) {
                 googleCalendarUrl = userUrl;
                 loadCalendar();
-                document.getElementById('sync-status').innerText = "⚠️ 변경됨 (저장 필요)";
+                markAsChanged();
             }
         }
 
@@ -319,6 +328,12 @@ HTML
         }
 
         function selectTodoItem(todoId) {
+            // 다른 항목으로 포커스가 넘어가기 직전 상태의 메모 서식을 임시 캐시에 즉시 강제 바인딩
+            const recordTextarea = document.getElementById('record-text');
+            if (currentActiveTodoId && recordTextarea && !recordTextarea.disabled) {
+                memoStorage[currentActiveTodoId] = recordTextarea.value;
+            }
+
             document.querySelectorAll('.todo-item').forEach(el => el.classList.remove('active-link'));
             document.querySelectorAll('.archive-item').forEach(el => el.classList.remove('active-archive'));
             const todoEl = document.getElementById(todoId);
@@ -335,6 +350,7 @@ HTML
             const textarea = document.getElementById('record-text');
             textarea.disabled = false;
             textarea.value = memoStorage[todoId] || "";
+            refreshMemoArchiveList();
         }
 
         function syncMemoHeader(todoId, val) {
@@ -347,14 +363,11 @@ HTML
             if(archiveTitleEl) archiveTitleEl.innerText = val || "내용 없음";
         }
 
-        // 교수님이 입력하는 도중에는 화면에만 대기시키고, 자동저장이 간섭하지 않도록 단절 조치
         function updateMemoLocal(val) {
             if(currentActiveTodoId) {
-                memoStorage[currentActiveTodoId] = val; // 내부 메모리에만 먼저 킵
-                
+                memoStorage[currentActiveTodoId] = val;
                 const previewEl = document.querySelector(`#archive-${currentActiveTodoId} .archive-preview`);
                 if(previewEl) previewEl.innerText = val ? val.replace(/\n/g, ' ') : "작성된 메모가 없습니다.";
-                
                 markAsChanged();
             }
         }
@@ -406,7 +419,6 @@ HTML
             textarea.disabled = true;
         }
 
-        // [최종 검증 완결 엔진] 중앙의 To-Do 리스트와 우측 세부메모(memoStorage) 딕셔너리를 글자 손실 없이 완벽하게 병합 포장
         function collectAllData() {
             const taskGroupsData = [];
             document.querySelectorAll('#task-panel-body .task-group').forEach(group => {
@@ -417,7 +429,6 @@ HTML
                 });
                 taskGroupsData.push({ title, todos });
             });
-            // 맹목적으로 memoStorage 전체 딕셔너리를 하나로 묶음
             return { taskGroups: taskGroupsData, memoStorage: memoStorage, googleCalendarUrl: googleCalendarUrl };
         }
 
@@ -425,6 +436,7 @@ HTML
             if(confirm('모든 데이터를 초기화하시겠습니까?')) {
                 document.getElementById('sync-status').innerText = "🔄 초기화 중...";
                 await clientDb.from('user_dashboards').delete().eq('user_id', USER_CHANNEL);
+                location.removeItem('dashData_backup');
                 location.reload();
             }
         }
