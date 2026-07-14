@@ -1,0 +1,926 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>JD Workspace v8.1 Safe Data</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <style>
+    :root {
+      color-scheme: light;
+      --bg-color: #f5f5f7;
+      --bg-soft: #fbfbfd;
+      --card-bg: rgba(255, 255, 255, 0.86);
+      --card-solid: #ffffff;
+      --text-primary: #1d1d1f;
+      --text-secondary: #6e6e73;
+      --text-tertiary: #a1a1a6;
+      --apple-blue: #0a84ff;
+      --apple-green: #30d158;
+      --apple-red: #ff453a;
+      --apple-orange: #ff9f0a;
+      --border-color: rgba(0, 0, 0, 0.08);
+      --hairline: rgba(60, 60, 67, 0.12);
+      --shadow-soft: 0 18px 45px rgba(0, 0, 0, 0.08);
+      --shadow-subtle: 0 8px 24px rgba(0, 0, 0, 0.055);
+      --radius-lg: 24px;
+      --radius-md: 18px;
+      --radius-sm: 12px;
+      --blur-bg: blur(22px) saturate(180%);
+    }
+
+    * { box-sizing: border-box; }
+    html { height: 100%; }
+    body {
+      min-height: 100%;
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Segoe UI", Roboto, sans-serif;
+      background:
+        radial-gradient(circle at 12% 0%, rgba(10, 132, 255, 0.10), transparent 28%),
+        radial-gradient(circle at 88% 8%, rgba(48, 209, 88, 0.08), transparent 24%),
+        linear-gradient(180deg, #fbfbfd 0%, #f5f5f7 42%, #f2f2f7 100%);
+      color: var(--text-primary);
+      margin: 0;
+      padding: 18px;
+      letter-spacing: -0.022em;
+      -webkit-font-smoothing: antialiased;
+      text-rendering: optimizeLegibility;
+    }
+
+    header {
+      position: sticky;
+      top: 0;
+      z-index: 20;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      padding: 16px;
+      margin: -2px 0 18px;
+      border: 1px solid var(--hairline);
+      border-radius: var(--radius-lg);
+      background: rgba(255, 255, 255, 0.72);
+      backdrop-filter: var(--blur-bg);
+      -webkit-backdrop-filter: var(--blur-bg);
+      box-shadow: var(--shadow-subtle);
+    }
+
+    h1 {
+      margin: 0;
+      font-size: 24px;
+      line-height: 1.08;
+      font-weight: 720;
+      letter-spacing: -0.045em;
+    }
+
+    .last-save {
+      margin-top: 6px;
+      font-size: 12px;
+      color: var(--text-secondary);
+    }
+
+    .btn-group, .cal-edit-group {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    button {
+      font-family: inherit;
+      border: 0;
+      user-select: none;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    button:hover { transform: translateY(-1px); }
+    button:active { transform: translateY(0); opacity: 0.82; }
+
+    .btn-main-save,
+    .btn-sub,
+    .btn-danger,
+    .btn-filled-green,
+    .btn-cal-action {
+      min-height: 34px;
+      border-radius: 999px;
+      cursor: pointer;
+      font-weight: 650;
+      transition: transform .16s ease, opacity .16s ease, background .16s ease, box-shadow .16s ease;
+      white-space: nowrap;
+    }
+
+    .btn-main-save {
+      padding: 8px 18px;
+      background: linear-gradient(180deg, #0a84ff 0%, #0071e3 100%);
+      color: #fff;
+      box-shadow: 0 8px 18px rgba(10, 132, 255, 0.26);
+      font-size: 13px;
+    }
+
+    .btn-sub {
+      padding: 8px 14px;
+      background: rgba(255, 255, 255, 0.76);
+      color: var(--text-primary);
+      border: 1px solid var(--hairline);
+      box-shadow: 0 2px 7px rgba(0, 0, 0, 0.035);
+      font-size: 12px;
+    }
+
+    .btn-danger {
+      padding: 8px 14px;
+      color: var(--apple-red);
+      background: rgba(255, 69, 58, 0.08);
+      border: 1px solid rgba(255, 69, 58, 0.16);
+      font-size: 12px;
+    }
+
+    .btn-filled-green {
+      padding: 7px 13px;
+      background: rgba(48, 209, 88, 0.13);
+      color: #16843a;
+      border: 1px solid rgba(48, 209, 88, 0.18);
+      font-size: 12px;
+    }
+
+    .btn-cal-action {
+      padding: 6px 10px;
+      background: rgba(255, 255, 255, 0.72);
+      color: var(--text-secondary);
+      border: 1px solid var(--hairline);
+      font-size: 11px;
+    }
+    .btn-cal-action.add { color: var(--apple-blue); background: rgba(10, 132, 255, 0.08); border-color: rgba(10, 132, 255, 0.15); }
+    .btn-cal-action.del { color: #8e6a00; background: rgba(255, 159, 10, 0.10); border-color: rgba(255, 159, 10, 0.18); }
+
+    .sync-badge {
+      min-height: 34px;
+      display: inline-flex;
+      align-items: center;
+      padding: 7px 13px;
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: 700;
+      background: rgba(118, 118, 128, 0.10);
+      color: var(--text-secondary);
+      border: 1px solid var(--hairline);
+    }
+
+    .dashboard {
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+    }
+
+    .panel,
+    .sub-panel {
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      min-height: 350px;
+      overflow: hidden;
+      border-radius: var(--radius-lg);
+      background: var(--card-bg);
+      border: 1px solid var(--hairline);
+      box-shadow: var(--shadow-soft);
+      backdrop-filter: var(--blur-bg);
+      -webkit-backdrop-filter: var(--blur-bg);
+    }
+
+    .panel-split {
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+      background: transparent;
+      border: 0;
+      box-shadow: none;
+      overflow: visible;
+    }
+
+    .sub-panel { min-height: 260px; }
+
+    .panel-header {
+      min-height: 56px;
+      padding: 15px 18px;
+      font-weight: 700;
+      font-size: 14px;
+      border-bottom: 1px solid var(--hairline);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+      background: rgba(255, 255, 255, 0.64);
+      backdrop-filter: blur(18px);
+      -webkit-backdrop-filter: blur(18px);
+    }
+
+    .panel-body {
+      padding: 18px;
+      flex: 1;
+      overflow-y: auto;
+    }
+
+    .panel-body::-webkit-scrollbar,
+    textarea::-webkit-scrollbar { width: 8px; }
+    .panel-body::-webkit-scrollbar-thumb,
+    textarea::-webkit-scrollbar-thumb { background: rgba(60, 60, 67, 0.18); border-radius: 999px; }
+
+    .calendar-note {
+      font-size: 11px;
+      color: var(--text-secondary);
+      padding: 10px 16px;
+      border-bottom: 1px solid var(--hairline);
+      background: rgba(255, 255, 255, 0.42);
+      line-height: 1.45;
+    }
+
+    .calendar-wrapper {
+      width: 100%;
+      height: 100%;
+      min-height: 360px;
+      border: 0;
+      background: #fff;
+      border-radius: 0 0 var(--radius-lg) var(--radius-lg);
+    }
+
+    input[type="text"], textarea {
+      font-family: inherit;
+      width: 100%;
+      color: var(--text-primary);
+      border: 1px solid transparent;
+      border-radius: var(--radius-sm);
+      padding: 10px 12px;
+      background: rgba(118, 118, 128, 0.08);
+      font-size: 14px;
+      outline: none;
+      transition: background .16s ease, border-color .16s ease, box-shadow .16s ease;
+    }
+
+    input[type="text"]:focus,
+    textarea:focus {
+      background: rgba(255, 255, 255, 0.96);
+      border-color: rgba(10, 132, 255, 0.38);
+      box-shadow: 0 0 0 4px rgba(10, 132, 255, 0.10);
+    }
+
+    textarea::placeholder,
+    input::placeholder { color: var(--text-tertiary); }
+
+    .task-group {
+      margin-bottom: 14px;
+      overflow: hidden;
+      border-radius: var(--radius-md);
+      background: rgba(255, 255, 255, 0.72);
+      border: 1px solid var(--hairline);
+      box-shadow: 0 6px 18px rgba(0, 0, 0, 0.035);
+    }
+
+    .task-group-title {
+      padding: 12px 14px;
+      background: rgba(118, 118, 128, 0.07);
+      font-weight: 700;
+      font-size: 13px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .task-group-title input.title-edit {
+      border: 0;
+      background: transparent;
+      font-weight: 700;
+      font-size: 13px;
+      width: 68%;
+      padding: 6px 8px;
+      box-shadow: none;
+    }
+
+    .todo-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-height: 48px;
+      padding: 9px 12px;
+      background: rgba(255, 255, 255, 0.84);
+      border-left: 3px solid transparent;
+      transition: background .16s ease, border-color .16s ease;
+    }
+    .todo-item + .todo-item { border-top: 1px solid rgba(60, 60, 67, 0.08); }
+    .todo-item:hover { background: rgba(255, 255, 255, 0.98); }
+    .todo-item.active-link {
+      background: rgba(10, 132, 255, 0.09) !important;
+      border-left-color: var(--apple-blue);
+    }
+
+    .todo-item input[type="text"] {
+      flex: 1;
+      border: 0;
+      background: transparent;
+      padding: 6px 8px;
+      font-size: 13px;
+      box-shadow: none;
+    }
+
+    .todo-item input[type="checkbox"] {
+      appearance: none;
+      width: 19px;
+      height: 19px;
+      border: 1.5px solid rgba(60, 60, 67, 0.28);
+      border-radius: 50%;
+      cursor: pointer;
+      position: relative;
+      flex-shrink: 0;
+      background: rgba(255, 255, 255, 0.72);
+      transition: background .16s ease, border-color .16s ease, transform .16s ease;
+    }
+    .todo-item input[type="checkbox"]:hover { transform: scale(1.06); }
+    .todo-item input[type="checkbox"]:checked { background: var(--apple-blue); border-color: var(--apple-blue); }
+    .todo-item input[type="checkbox"]:checked::after {
+      content: '✓';
+      position: absolute;
+      color: white;
+      font-size: 11px;
+      font-weight: 800;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -52%);
+    }
+    .todo-item.done input[type="text"] { text-decoration: line-through; color: var(--text-tertiary); }
+
+    .action-icon {
+      border: 0;
+      background: transparent;
+      cursor: pointer;
+      color: var(--text-tertiary);
+      border-radius: 50%;
+      min-width: 28px;
+      height: 28px;
+      transition: background .16s ease, color .16s ease;
+    }
+    .action-icon:hover { background: rgba(118, 118, 128, 0.10); color: var(--text-primary); }
+
+    .memo-target-title {
+      font-size: 12px;
+      color: var(--apple-blue);
+      font-weight: 650;
+      margin-bottom: 10px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .record-area {
+      flex: 1;
+      resize: none;
+      min-height: 190px;
+      line-height: 1.55;
+      background: rgba(118, 118, 128, 0.07);
+    }
+
+    .archive-list {
+      display: flex;
+      flex-direction: column;
+      gap: 9px;
+    }
+
+    .archive-item {
+      padding: 12px 13px;
+      background: rgba(255, 255, 255, 0.70);
+      border-radius: var(--radius-md);
+      border: 1px solid var(--hairline);
+      cursor: pointer;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      transition: background .16s ease, border-color .16s ease, transform .16s ease;
+    }
+    .archive-item:hover { transform: translateY(-1px); background: rgba(255, 255, 255, 0.96); }
+    .archive-item.active-archive { background: rgba(10, 132, 255, 0.09); border-color: rgba(10, 132, 255, 0.28); }
+
+    .archive-meta { font-size: 11px; color: var(--text-tertiary); margin-bottom: 3px; }
+    .archive-title { font-size: 13px; font-weight: 700; color: var(--text-primary); }
+    .archive-preview {
+      margin-top: 3px;
+      font-size: 11px;
+      color: var(--text-secondary);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 230px;
+    }
+
+    .has-memo-badge,
+    .empty-badge {
+      font-size: 9px;
+      padding: 3px 7px;
+      border-radius: 999px;
+      font-weight: 800;
+      white-space: nowrap;
+    }
+    .has-memo-badge { background: rgba(10, 132, 255, 0.10); color: var(--apple-blue); }
+    .empty-badge { background: rgba(118, 118, 128, 0.10); color: var(--text-tertiary); }
+    .hidden { display: none !important; }
+
+    @media (min-width: 768px) {
+      body { padding: 26px; }
+      header {
+        flex-direction: row;
+        justify-content: space-between;
+        align-items: center;
+        padding: 18px 20px;
+        margin-bottom: 22px;
+      }
+      h1 { font-size: 28px; }
+    }
+
+    @media (min-width: 1180px) {
+      body { padding: 30px; }
+      .dashboard {
+        display: grid;
+        grid-template-columns: minmax(320px, 0.95fr) minmax(360px, 1.15fr) minmax(360px, 1.15fr);
+        gap: 22px;
+        height: calc(100vh - 142px);
+        min-height: 680px;
+      }
+      .panel, .sub-panel { min-height: auto; }
+      .panel-split {
+        display: grid;
+        grid-template-rows: 1fr 1fr;
+        gap: 22px;
+      }
+    }
+
+    @media (max-width: 767px) {
+      header { border-radius: 20px; }
+      .panel, .sub-panel { border-radius: 20px; }
+      .panel-header { flex-direction: column; align-items: flex-start; }
+      .btn-group { width: 100%; }
+      .btn-main-save, .btn-sub, .btn-danger, .sync-badge { flex: 1 1 auto; justify-content: center; }
+    }
+
+    .directory-card{margin-bottom:12px;border:1px solid var(--hairline);border-radius:18px;background:rgba(255,255,255,.74);overflow:hidden}.directory-head{display:flex;gap:10px;align-items:center;padding:13px;cursor:pointer}.directory-head:hover,.archive-item:hover{background:rgba(255,255,255,.96)}.directory-head.active,.archive-item.active-archive{background:rgba(10,132,255,.09)}.directory-copy{flex:1;min-width:0}.directory-name{font-weight:750;font-size:13px}.directory-count{font-size:10px;color:var(--text-tertiary);margin-top:3px}.archive-item.completed .archive-title{text-decoration:line-through;color:var(--text-tertiary)}.detail-title{font-size:24px;font-weight:760;letter-spacing:-.04em;margin-bottom:10px}.detail-meta{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:14px}.detail-pill{font-size:10px;font-weight:800;padding:5px 8px;border-radius:999px;background:rgba(118,118,128,.1);color:var(--text-secondary)}.detail-memo{white-space:pre-wrap;line-height:1.65;min-height:260px;padding:16px;border-radius:18px;background:rgba(118,118,128,.07)}.detail-danger{margin-top:18px;padding-top:14px;border-top:1px solid var(--hairline)}
+  </style>
+</head>
+<body>
+  <header>
+    <div>
+      <h1>JD Workspace v8.1 Safe Data</h1>
+      <div id="last-save" class="last-save">마지막 저장: -</div>
+    </div>
+    <div class="btn-group">
+      <button class="btn-main-save" onclick="saveCloudData(true)">💾 지금 저장</button>
+      <button class="btn-sub" onclick="loadCloudData(true)">⬇️ 최신 불러오기</button>
+      <button class="btn-sub" onclick="exportExcel()">📊 Excel 내보내기</button>
+      <button class="btn-sub" onclick="document.getElementById('excel-file').click()">📥 Excel 불러오기</button>
+      <input id="excel-file" class="hidden" type="file" accept=".xlsx,.xls" onchange="importExcel(event)">
+      <button class="btn-sub" onclick="downloadBackup()">📦 JSON 백업</button>
+      <button class="btn-sub" onclick="document.getElementById('backup-file').click()">♻️ 복원</button>
+      <input id="backup-file" class="hidden" type="file" accept="application/json" onchange="restoreBackup(event)">
+      <span id="sync-status" class="sync-badge">⏳ 대기 상태</span>
+      <button class="btn-danger" onclick="clearData()">🔄 전체 초기화</button>
+    </div>
+  </header>
+
+  <div class="dashboard">
+    <div class="panel">
+      <div class="panel-header">
+        <span>🕒 구글 일정표</span>
+        <div class="cal-edit-group">
+          <button class="btn-cal-action add" onclick="openGoogleCalendarAddInline()">➕ 일정 추가</button>
+          <button class="btn-cal-action del" onclick="openGoogleCalendarEditInline()">✏️ 편집 모드</button>
+          <button class="btn-cal-action" onclick="openGoogleCalendarView()">👁️ 보기 모드</button>
+          <button class="btn-cal-action" onclick="setupCalendarAddress()">⚙️ 설정</button>
+        </div>
+      </div>
+      <div class="calendar-note">구글 일정은 좌측 패널에서 확인하고, 편집 화면이 차단될 경우 새 탭으로 자동 전환됩니다.</div>
+      <div class="panel-body" style="padding:0;overflow:hidden;display:flex;flex-direction:column;">
+        <iframe id="gcal-iframe" class="calendar-wrapper" src="about:blank"></iframe>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-header"><span>🗂️ 업무 아카이브</span><button class="btn-filled-green" onclick="addNewTaskGroup()">+ 디렉터리</button></div>
+      <div class="panel-body">
+        <input id="archive-search" type="text" placeholder="업무와 메모 검색" oninput="refreshMemoArchiveList()" style="margin-bottom:10px">
+        <div class="cal-edit-group" style="margin-bottom:12px">
+          <button id="view-active" class="btn-cal-action add" onclick="setArchiveView('active')">진행 중</button>
+          <button id="view-completed" class="btn-cal-action" onclick="setArchiveView('completed')">완료</button>
+          <button id="view-trash" class="btn-cal-action del" onclick="setArchiveView('trash')">휴지통</button>
+        </div>
+        <div id="memo-archive-container"></div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-header">
+        <span>📝 상세 내용</span>
+        <div class="cal-edit-group">
+          <button id="detail-edit-btn" class="btn-cal-action add hidden" onclick="enterDetailEdit()">수정</button>
+          <button id="detail-save-btn" class="btn-cal-action add hidden" onclick="saveDetailEdit()">저장</button>
+          <button id="detail-cancel-btn" class="btn-cal-action hidden" onclick="cancelDetailEdit()">취소</button>
+        </div>
+      </div>
+      <div class="panel-body" id="detail-panel"><div style="color:var(--text-secondary);font-size:13px;text-align:center;margin-top:80px">가운데 목록에서 항목을 선택하세요.</div></div>
+    </div>
+  </div>
+
+  <script>
+    const SUPABASE_URL = 'https://janalakgduwqoyzimuku.supabase.co';
+    const SUPABASE_KEY = 'sb_publishable_5bYHyOYBYE8aeOLpB9TYEw_-5mXb6Bi';
+    const USER_CHANNEL = 'yjd2020';
+    const AUTOSAVE_DELAY_MS = 5000;
+
+    const clientDb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
+      auth: { persistSession: false, autoRefreshToken: false },
+      global: { headers: { apikey: SUPABASE_KEY } },
+      realtime: { params: { eventsPerSecond: 2 } }
+    });
+
+    let memoStorage = {};
+    let currentActiveTodoId = null;
+    let googleCalendarUrl = '';
+    let lastLoadedAt = null;
+    let hasLocalChanges = false;
+    let archiveView = 'active';
+    let selectedDetail = null;
+    let detailEditDraft = null;
+    let trashStorage = [];
+    let autoSaveTimer = null;
+    const deviceId = localStorage.getItem('dashboard_device_id') || ('dev-' + Date.now() + '-' + Math.random().toString(36).slice(2));
+    localStorage.setItem('dashboard_device_id', deviceId);
+
+    window.onload = async function () {
+      setStatus('🔄 클라우드 최신 데이터 로드 중...');
+      await loadCloudData(false);
+      subscribeRealtime();
+      loadCalendar();
+    };
+
+    function setStatus(text) { document.getElementById('sync-status').innerText = text; }
+    function updateLastSaveLabel(value) {
+      document.getElementById('last-save').innerText = value ? ('마지막 저장: ' + new Date(value).toLocaleString('ko-KR')) : '마지막 저장: -';
+    }
+    function nowIso() { return new Date().toISOString(); }
+
+    function scheduleAutoSave() {
+      clearTimeout(autoSaveTimer);
+      autoSaveTimer = setTimeout(() => saveCloudData(false), AUTOSAVE_DELAY_MS);
+    }
+
+    function markAsChanged() {
+      hasLocalChanges = true;
+      setStatus('⚠️ 변경됨 · 5초 후 자동 저장');
+      scheduleAutoSave();
+    }
+
+    async function loadCloudData(manual) {
+      try {
+        const { data, error } = await clientDb.from('user_dashboards').select('content').eq('user_id', USER_CHANNEL).maybeSingle();
+        if (error) throw error;
+        if (data && data.content) {
+          applyCloudContent(data.content);
+          setStatus(manual ? '✅ 최신 데이터 다시 불러옴' : '✅ 최신 상태 동기화 완료');
+        } else {
+          setDefaultTasks();
+          lastLoadedAt = nowIso();
+          updateLastSaveLabel(null);
+          setStatus('🆕 새 대시보드 구동');
+        }
+      } catch (e) {
+        console.error('loadCloudData error:', e);
+        const backup = localStorage.getItem('dashData_backup');
+        if (backup) {
+          applyCloudContent(JSON.parse(backup));
+          setStatus('🔒 브라우저 백업 데이터로 구동');
+        } else {
+          setDefaultTasks();
+          setStatus('⚠️ 클라우드 로드 실패');
+        }
+      }
+    }
+
+    function applyCloudContent(content) {
+      memoStorage = content.memoStorage || {};
+      googleCalendarUrl = content.googleCalendarUrl || '';
+      trashStorage = content.trashStorage || [];
+      if (content.taskGroups && !content.version) content.version = 8;
+      renderAllData(content);
+      const meta = content.meta || {};
+      lastLoadedAt = meta.updatedAt || nowIso();
+      hasLocalChanges = false;
+      clearTimeout(autoSaveTimer);
+      updateLastSaveLabel(meta.updatedAt);
+      loadCalendar();
+    }
+
+    async function saveCloudData(manual) {
+      const recordTextarea = document.getElementById('record-text');
+      if (currentActiveTodoId && recordTextarea && !recordTextarea.disabled) memoStorage[currentActiveTodoId] = recordTextarea.value;
+      const data = collectAllData();
+      data.meta = { updatedAt: nowIso(), deviceId, appVersion: 'v7.0' };
+
+      try {
+        setStatus(manual ? '📤 클라우드 저장 중...' : '📤 자동 저장 중...');
+        const { data: remote, error: readError } = await clientDb.from('user_dashboards').select('content').eq('user_id', USER_CHANNEL).maybeSingle();
+        if (readError) throw readError;
+        const remoteUpdatedAt = remote && remote.content && remote.content.meta ? remote.content.meta.updatedAt : null;
+        const remoteDeviceId = remote && remote.content && remote.content.meta ? remote.content.meta.deviceId : null;
+        if (remoteUpdatedAt && lastLoadedAt && new Date(remoteUpdatedAt) > new Date(lastLoadedAt) && remoteDeviceId !== deviceId) {
+          if (!confirm('다른 기기에서 더 최신 데이터가 저장되어 있습니다. 현재 화면으로 덮어쓸까요?\n취소를 누르면 최신 데이터를 불러옵니다.')) {
+            await loadCloudData(true);
+            return;
+          }
+        }
+        const { error } = await clientDb.from('user_dashboards').upsert({ user_id: USER_CHANNEL, content: data }, { onConflict: 'user_id' });
+        if (error) throw error;
+        lastLoadedAt = data.meta.updatedAt;
+        hasLocalChanges = false;
+        localStorage.setItem('dashData_backup', JSON.stringify(data));
+        updateLastSaveLabel(data.meta.updatedAt);
+        setStatus(manual ? '✅ 클라우드 저장 완료' : '✅ 자동 저장 완료');
+      } catch (e) {
+        console.error('saveCloudData error:', e);
+        localStorage.setItem('dashData_backup', JSON.stringify(data));
+        setStatus('❌ 클라우드 저장 실패 · 브라우저 백업');
+        if (manual) alert('클라우드 저장에 실패했습니다.\n\n오류 내용: ' + (e.message || e));
+      }
+    }
+
+    function subscribeRealtime() {
+      clientDb.channel('dashboard-sync-' + USER_CHANNEL)
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'user_dashboards', filter: 'user_id=eq.' + USER_CHANNEL }, payload => {
+          const content = payload.new && payload.new.content ? payload.new.content : null;
+          if (!content || !content.meta || content.meta.deviceId === deviceId) return;
+          if (hasLocalChanges) {
+            setStatus('🟠 다른 기기 변경 감지 · 저장 또는 최신 불러오기 선택');
+            return;
+          }
+          applyCloudContent(content);
+          setStatus('🔄 다른 기기 변경사항 자동 반영');
+        })
+        .subscribe(status => console.log('Realtime status:', status));
+    }
+
+    function openGoogleCalendarView() { loadCalendar(); }
+    function openGoogleCalendarAddInline() {
+      const iframe = document.getElementById('gcal-iframe');
+      iframe.src = 'https://calendar.google.com/calendar/render?action=TEMPLATE&ctz=Asia%2FSeoul';
+      setStatus('🗓️ 일정 추가 화면 시도 중');
+    }
+    function openGoogleCalendarEditInline() {
+      const iframe = document.getElementById('gcal-iframe');
+      iframe.src = 'https://calendar.google.com/calendar/u/0/r?ctz=Asia%2FSeoul';
+      setStatus('✏️ 구글 편집 화면 시도 중 · 차단되면 새 탭 사용');
+      setTimeout(() => {
+        if (confirm('구글 보안 정책 때문에 편집 화면이 대시보드 안에서 보이지 않을 수 있습니다. 새 탭으로 열까요?')) {
+          window.open('https://calendar.google.com/calendar/u/0/r?ctz=Asia%2FSeoul', '_blank');
+        }
+      }, 1200);
+    }
+    function setupCalendarAddress() {
+      const msg = '구글 캘린더 공개/공유 iframe 또는 embed URL을 입력하세요.\n예: https://calendar.google.com/calendar/embed?...';
+      const userUrl = prompt(msg, googleCalendarUrl);
+      if (userUrl !== null) {
+        googleCalendarUrl = userUrl.trim();
+        loadCalendar();
+        markAsChanged();
+      }
+    }
+    function loadCalendar() {
+      const iframe = document.getElementById('gcal-iframe');
+      if (googleCalendarUrl && googleCalendarUrl.trim() !== '') {
+        let targetUrl = googleCalendarUrl.trim();
+        if (targetUrl.includes('/render')) targetUrl = targetUrl.replace('/render', '/embed');
+        if (!targetUrl.includes('mode=')) targetUrl += (targetUrl.includes('?') ? '&' : '?') + 'mode=AGENDA&wkst=1&bgcolor=%23ffffff&ctz=Asia%2FSeoul';
+        iframe.src = targetUrl;
+      } else {
+        iframe.srcdoc = '<div style="font-family:sans-serif;color:#86868b;text-align:center;margin-top:100px;font-size:12px;padding:20px;line-height:1.6;">[⚙️ 설정]을 눌러 구글 캘린더 embed URL을 입력하세요.<br>보기는 대시보드 안에서 가능하며, 편집은 Google 계정 보안 정책에 따라 새 탭이 필요할 수 있습니다.</div>';
+      }
+    }
+
+    function setDefaultTasks() {
+      document.getElementById('task-panel-body').innerHTML = '';
+      addNewTaskGroup('🏛️ 협회(KIA) 관련 업무');
+      addNewTaskGroup('🏗️ 도시·건축 프로젝트 / 마스터플랜');
+      addNewTaskGroup('🎓 위원회·자문 / 대학 강의');
+    }
+    function renderAllData(data) {
+      document.getElementById('task-panel-body').innerHTML = '';
+      if (data.taskGroups && data.taskGroups.length > 0) data.taskGroups.forEach(g => addNewTaskGroup(g.title, g.todos));
+      else setDefaultTasks();
+      resetMemoArea();
+      selectedDetail = null;
+      refreshMemoArchiveList();
+      renderDetailPanel();
+    }
+    function addNewTaskGroup(titleText = '새 태스크 그룹', todosArray = []) {
+      const container = document.getElementById('task-panel-body');
+      const groupId = 'group-' + Date.now() + Math.random().toString(36).slice(2, 7);
+      const groupDiv = document.createElement('div');
+      groupDiv.className = 'task-group';
+      groupDiv.id = groupId;
+      groupDiv.innerHTML = '<div class="task-group-title"><input type="text" class="title-edit" value="' + escapeHtml(titleText) + '" onchange="markAsChanged()" oninput="markAsChanged()"><div><button class="action-icon" onclick="addTodoItem(\'' + groupId + '\')" style="color:var(--apple-blue);font-weight:bold;font-size:11px;">+ 할일</button><button class="action-icon" onclick="removeTaskGroup(\'' + groupId + '\')">✕</button></div></div><div class="todo-container" id="todo-container-' + groupId + '"></div>';
+      container.appendChild(groupDiv);
+      if (todosArray.length > 0) todosArray.forEach(t => addTodoItem(groupId, t.text, t.checked, t.id));
+      else addTodoItem(groupId);
+      refreshMemoArchiveList();
+    }
+    function removeTaskGroup(groupId) {
+      const group=document.getElementById(groupId); if(!group) return;
+      const title=group.querySelector('.title-edit').value; const count=group.querySelectorAll('.todo-item').length;
+      if(confirm('['+title+'] 디렉터리와 내부 '+count+'개 항목을 휴지통으로 이동할까요?')){
+        trashStorage.push({type:'group',deletedAt:new Date().toISOString(),data:serializeGroup(group)}); group.remove(); selectedDetail=null; refreshMemoArchiveList(); renderDetailPanel(); markAsChanged();
+      }
+    }
+    function addTodoItem(groupId, text = '', checked = false, existingId = null) {
+      const container = document.getElementById('todo-container-' + groupId);
+      const todoId = existingId || 'todo-' + Date.now() + Math.random().toString(36).slice(2, 7);
+      const div = document.createElement('div');
+      div.className = 'todo-item ' + (checked ? 'done' : '');
+      div.id = todoId;
+      div.innerHTML = '<input type="checkbox" ' + (checked ? 'checked' : '') + ' onchange="toggleTodo(this)"><input type="text" value="' + escapeHtml(text) + '" placeholder="할 일 입력..." onfocus="selectTodoItem(\'' + todoId + '\')" onchange="markAsChanged()" oninput="syncMemoHeader(\'' + todoId + '\', this.value); markAsChanged();"><button class="action-icon" onclick="deleteTodoItem(\'' + todoId + '\')">✕</button>';
+      container.appendChild(div);
+      if (memoStorage[todoId] === undefined) memoStorage[todoId] = '';
+      refreshMemoArchiveList(); markAsChanged();
+    }
+    function deleteTodoItem(todoId) {
+      const el=document.getElementById(todoId); if(!el) return; const g=el.closest('.task-group');
+      if(confirm('이 항목을 휴지통으로 이동할까요? 나중에 복원할 수 있습니다.')){trashStorage.push({type:'todo',deletedAt:new Date().toISOString(),groupTitle:g.querySelector('.title-edit').value,data:{id:todoId,text:el.querySelector('input[type=text]').value,checked:el.querySelector('input[type=checkbox]').checked,memo:memoStorage[todoId]||''}});el.remove();delete memoStorage[todoId];selectedDetail=null;refreshMemoArchiveList();renderDetailPanel();markAsChanged();}
+    }
+    function toggleTodo(chk) { chk.parentElement.classList.toggle('done', chk.checked); markAsChanged(); }
+    function selectTodoItem(todoId) {
+      const recordTextarea = document.getElementById('record-text');
+      if (currentActiveTodoId && recordTextarea && !recordTextarea.disabled) memoStorage[currentActiveTodoId] = recordTextarea.value;
+      document.querySelectorAll('.todo-item').forEach(el => el.classList.remove('active-link'));
+      document.querySelectorAll('.archive-item').forEach(el => el.classList.remove('active-archive'));
+      const todoEl = document.getElementById(todoId); if (!todoEl) return;
+      todoEl.classList.add('active-link'); const archiveEl = document.getElementById('archive-' + todoId); if (archiveEl) archiveEl.classList.add('active-archive'); currentActiveTodoId = todoId;
+      const todoText = todoEl.querySelector('input[type="text"]').value || '내용 없음';
+      const groupTitle = todoEl.closest('.task-group').querySelector('.title-edit').value;
+      document.getElementById('memo-target-display').innerText = '📌 [' + groupTitle + '] ➔ "' + todoText + '"';
+      const textarea = document.getElementById('record-text'); textarea.disabled = false; textarea.value = memoStorage[todoId] || ''; refreshMemoArchiveList();
+    }
+    function syncMemoHeader(todoId, val) {
+      if (currentActiveTodoId === todoId) {
+        const todoEl = document.getElementById(todoId); const groupTitle = todoEl.closest('.task-group').querySelector('.title-edit').value;
+        document.getElementById('memo-target-display').innerText = '📌 [' + groupTitle + '] ➔ "' + (val || '내용 없음') + '"';
+      }
+      const archiveTitleEl = document.querySelector('#archive-' + todoId + ' .archive-title'); if (archiveTitleEl) archiveTitleEl.innerText = val || '내용 없음';
+    }
+    function updateMemoLocal(val) {
+      if (currentActiveTodoId) {
+        memoStorage[currentActiveTodoId] = val;
+        const previewEl = document.querySelector('#archive-' + currentActiveTodoId + ' .archive-preview'); if (previewEl) previewEl.innerText = val ? val.replace(/\n/g, ' ') : '작성된 메모가 없습니다.';
+        markAsChanged();
+      }
+    }
+    function refreshMemoArchiveList() {
+      const container = document.getElementById('memo-archive-container'); container.innerHTML = '';
+      const groups = document.querySelectorAll('#task-panel-body .task-group'); if (groups.length === 0) return;
+      const wrapper = document.createElement('div'); wrapper.className = 'archive-list';
+      groups.forEach(group => {
+        const groupTitle = group.querySelector('.title-edit').value;
+        group.querySelectorAll('.todo-item').forEach(todo => {
+          const todoId = todo.id; const todoText = todo.querySelector('input[type="text"]').value || '내용 없음'; const memoText = memoStorage[todoId] || ''; const hasMemo = memoText && memoText.trim().length > 0;
+          const itemDiv = document.createElement('div'); itemDiv.className = 'archive-item ' + (currentActiveTodoId === todoId ? 'active-archive' : ''); itemDiv.id = 'archive-' + todoId; itemDiv.onclick = () => selectTodoItem(todoId);
+          itemDiv.innerHTML = '<div style="flex:1;overflow:hidden;"><div class="archive-meta">' + escapeHtml(groupTitle) + '</div><div class="archive-title">' + escapeHtml(todoText) + '</div><div class="archive-preview">' + escapeHtml(hasMemo ? memoText.replace(/\n/g, ' ') : '작성된 메모가 없습니다.') + '</div></div><div class="badge-zone" style="margin-left:8px;">' + (hasMemo ? '<span class="has-memo-badge">메모보유</span>' : '<span class="empty-badge">비어있음</span>') + '</div>';
+          wrapper.appendChild(itemDiv);
+        });
+      });
+      container.appendChild(wrapper);
+    }
+    function resetMemoArea() { currentActiveTodoId = null; document.getElementById('memo-target-display').innerText = '📌 To-Do 항목을 선택하세요.'; const textarea = document.getElementById('record-text'); textarea.value = ''; textarea.disabled = true; }
+    function collectAllData() {
+      const taskGroupsData = [];
+      document.querySelectorAll('#task-panel-body .task-group').forEach(group => {
+        const title = group.querySelector('.title-edit').value; const todos = [];
+        group.querySelectorAll('.todo-item').forEach(todo => todos.push({ id: todo.id, checked: todo.querySelector('input[type="checkbox"]').checked, text: todo.querySelector('input[type="text"]').value }));
+        taskGroupsData.push({ title, todos });
+      });
+      return { version: 8, taskGroups: taskGroupsData, memoStorage, googleCalendarUrl, trashStorage };
+    }
+    async function clearData() {
+      if (confirm('모든 클라우드/브라우저 데이터를 초기화하시겠습니까?')) {
+        setStatus('🔄 초기화 중...');
+        await clientDb.from('user_dashboards').delete().eq('user_id', USER_CHANNEL);
+        localStorage.removeItem('dashData_backup');
+        location.reload();
+      }
+    }
+    function downloadBackup() {
+      const data = collectAllData(); data.meta = { updatedAt: nowIso(), deviceId, appVersion: 'v7.1-apple-minimal-backup' };
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+      const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'dashboard_backup_' + new Date().toISOString().slice(0, 10) + '.json'; a.click(); URL.revokeObjectURL(a.href);
+    }
+    function restoreBackup(event) {
+      const file = event.target.files[0]; if (!file) return;
+      const reader = new FileReader();
+      reader.onload = e => {
+        try { const data = JSON.parse(e.target.result); applyCloudContent(data); markAsChanged(); alert('백업을 화면에 복원했습니다. 클라우드에 반영하려면 지금 저장을 누르세요.'); }
+        catch (err) { alert('백업 파일을 읽을 수 없습니다.'); }
+      };
+      reader.readAsText(file); event.target.value = '';
+    }
+    function serializeGroup(group){return {title:group.querySelector('.title-edit').value,todos:[...group.querySelectorAll('.todo-item')].map(t=>({id:t.id,text:t.querySelector('input[type=text]').value,checked:t.querySelector('input[type=checkbox]').checked,memo:memoStorage[t.id]||''}))};}
+    function setArchiveView(v){archiveView=v;['active','completed','trash'].forEach(x=>{const b=document.getElementById('view-'+x);if(b)b.classList.toggle('add',x===v)});selectedDetail=null;refreshMemoArchiveList();renderDetailPanel();}
+    function selectDirectory(groupId){selectedDetail={type:'group',id:groupId};refreshMemoArchiveList();renderDetailPanel();}
+    function selectArchiveTodo(todoId){selectedDetail={type:'todo',id:todoId};refreshMemoArchiveList();renderDetailPanel();}
+    function selectTrash(index){selectedDetail={type:'trash',index};refreshMemoArchiveList();renderDetailPanel();}
+    function refreshMemoArchiveList(){
+      const container=document.getElementById('memo-archive-container'); if(!container)return; container.innerHTML=''; const q=(document.getElementById('archive-search')?.value||'').trim().toLowerCase();
+      if(archiveView==='trash'){if(!trashStorage.length){container.innerHTML='<div class="empty-badge" style="display:block;text-align:center;padding:30px">휴지통이 비어 있습니다.</div>';return;} const w=document.createElement('div');w.className='archive-list';trashStorage.forEach((x,i)=>{const title=x.type==='group'?x.data.title:x.data.text;if(q&&!title.toLowerCase().includes(q))return;const d=document.createElement('div');d.className='archive-item '+(selectedDetail?.type==='trash'&&selectedDetail.index===i?'active-archive':'');d.onclick=()=>selectTrash(i);d.innerHTML='<div><div class="archive-meta">'+(x.type==='group'?'삭제된 디렉터리':'삭제된 업무')+'</div><div class="archive-title">'+escapeHtml(title)+'</div></div>';w.appendChild(d)});container.appendChild(w);return;}
+      const groups=document.querySelectorAll('#task-panel-body .task-group');groups.forEach(group=>{const gid=group.id,title=group.querySelector('.title-edit').value;let todos=[...group.querySelectorAll('.todo-item')].filter(t=>archiveView==='completed'?t.querySelector('input[type=checkbox]').checked:!t.querySelector('input[type=checkbox]').checked).filter(t=>!q||(t.querySelector('input[type=text]').value+' '+(memoStorage[t.id]||'')).toLowerCase().includes(q));if(q&&!title.toLowerCase().includes(q)&&!todos.length)return;const card=document.createElement('div');card.className='directory-card';const h=document.createElement('div');h.className='directory-head '+(selectedDetail?.type==='group'&&selectedDetail.id===gid?'active':'');h.onclick=()=>selectDirectory(gid);h.innerHTML='<span style="font-size:18px">📁</span><div class="directory-copy"><div class="directory-name">'+escapeHtml(title)+'</div><div class="directory-count">'+todos.length+'개 항목</div></div><span>›</span>';card.appendChild(h);todos.forEach(t=>{const text=t.querySelector('input[type=text]').value||'내용 없음',memo=memoStorage[t.id]||'';const row=document.createElement('div');row.className='archive-item '+(archiveView==='completed'?'completed ':'')+(selectedDetail?.type==='todo'&&selectedDetail.id===t.id?'active-archive':'');row.onclick=()=>selectArchiveTodo(t.id);row.innerHTML='<div style="flex:1;overflow:hidden"><div class="archive-title">'+escapeHtml(text)+'</div><div class="archive-preview">'+escapeHtml(memo?memo.replace(/\n/g,' '):'작성된 메모가 없습니다.')+'</div></div>';card.appendChild(row)});container.appendChild(card)});
+    }
+    function renderDetailPanel(){const p=document.getElementById('detail-panel'),eb=document.getElementById('detail-edit-btn');if(!p)return;document.getElementById('detail-save-btn').classList.add('hidden');document.getElementById('detail-cancel-btn').classList.add('hidden');if(!selectedDetail){eb.classList.add('hidden');p.innerHTML='<div style="color:var(--text-secondary);font-size:13px;text-align:center;margin-top:80px">가운데 목록에서 항목을 선택하세요.</div>';return;}if(selectedDetail.type==='group'){const g=document.getElementById(selectedDetail.id);if(!g)return;eb.classList.remove('hidden');const title=g.querySelector('.title-edit').value,count=g.querySelectorAll('.todo-item').length;p.innerHTML='<div class="detail-title">📁 '+escapeHtml(title)+'</div><div class="detail-meta"><span class="detail-pill">'+count+'개 업무</span></div><div class="detail-memo">이 디렉터리를 선택한 상태에서 “+ 할일”을 눌러 항목을 추가할 수 있습니다.</div><div class="detail-danger"><button class="btn-danger" onclick="removeTaskGroup(\''+g.id+'\')">휴지통으로 이동</button></div>';return;}if(selectedDetail.type==='todo'){const t=document.getElementById(selectedDetail.id);if(!t)return;eb.classList.remove('hidden');const title=t.querySelector('input[type=text]').value||'내용 없음',done=t.querySelector('input[type=checkbox]').checked,g=t.closest('.task-group').querySelector('.title-edit').value;p.innerHTML='<div class="detail-title">'+escapeHtml(title)+'</div><div class="detail-meta"><span class="detail-pill">'+escapeHtml(g)+'</span><span class="detail-pill">'+(done?'완료':'진행 중')+'</span></div><div class="detail-memo">'+escapeHtml(memoStorage[t.id]||'작성된 메모가 없습니다.')+'</div><div class="detail-danger"><button class="btn-filled-green" onclick="toggleTodoFromDetail(\''+t.id+'\')">'+(done?'진행 중으로 복원':'완료 처리')+'</button> <button class="btn-danger" onclick="deleteTodoItem(\''+t.id+'\')">휴지통으로 이동</button></div>';return;}eb.classList.add('hidden');const x=trashStorage[selectedDetail.index],title=x.type==='group'?x.data.title:x.data.text;p.innerHTML='<div class="detail-title">'+escapeHtml(title)+'</div><div class="detail-memo">휴지통 항목입니다. 복원하거나 영구 삭제할 수 있습니다.</div><div class="detail-danger"><button class="btn-filled-green" onclick="restoreTrash('+selectedDetail.index+')">복원</button> <button class="btn-danger" onclick="permanentDeleteTrash('+selectedDetail.index+')">영구 삭제</button></div>';}
+    function toggleTodoFromDetail(id){const t=document.getElementById(id);if(!t)return;const c=t.querySelector('input[type=checkbox]');c.checked=!c.checked;toggleTodo(c);selectedDetail=null;refreshMemoArchiveList();renderDetailPanel();}
+    function enterDetailEdit(){detailEditDraft=selectedDetail;if(selectedDetail.type==='group'){const g=document.getElementById(selectedDetail.id);document.getElementById('detail-panel').innerHTML='<div class="memo-target-title">디렉터리 이름</div><input id="detail-title-input" type="text" value="'+escapeHtml(g.querySelector('.title-edit').value)+'">';}else{const t=document.getElementById(selectedDetail.id);document.getElementById('detail-panel').innerHTML='<div class="memo-target-title">업무 제목</div><input id="detail-title-input" type="text" value="'+escapeHtml(t.querySelector('input[type=text]').value)+'"><div class="memo-target-title" style="margin-top:14px">메모</div><textarea id="detail-memo-input" class="record-area">'+escapeHtml(memoStorage[t.id]||'')+'</textarea>';}document.getElementById('detail-edit-btn').classList.add('hidden');document.getElementById('detail-save-btn').classList.remove('hidden');document.getElementById('detail-cancel-btn').classList.remove('hidden');}
+    function saveDetailEdit(){if(!detailEditDraft)return;if(detailEditDraft.type==='group'){document.getElementById(detailEditDraft.id).querySelector('.title-edit').value=document.getElementById('detail-title-input').value.trim()||'새 디렉터리';}else{const t=document.getElementById(detailEditDraft.id);t.querySelector('input[type=text]').value=document.getElementById('detail-title-input').value.trim()||'내용 없음';memoStorage[t.id]=document.getElementById('detail-memo-input').value;}detailEditDraft=null;markAsChanged();refreshMemoArchiveList();renderDetailPanel();}
+    function cancelDetailEdit(){detailEditDraft=null;renderDetailPanel();}
+    function restoreTrash(i){const x=trashStorage[i];if(x.type==='group'){addNewTaskGroup(x.data.title,x.data.todos.map(t=>({id:t.id,text:t.text,checked:t.checked})));x.data.todos.forEach(t=>memoStorage[t.id]=t.memo||'');}else{let target=[...document.querySelectorAll('.task-group')].find(g=>g.querySelector('.title-edit').value===x.groupTitle)||document.querySelector('.task-group');if(target){addTodoItem(target.id,x.data.text,x.data.checked,x.data.id);memoStorage[x.data.id]=x.data.memo||'';}}trashStorage.splice(i,1);selectedDetail=null;markAsChanged();refreshMemoArchiveList();renderDetailPanel();}
+    function permanentDeleteTrash(i){if(prompt('영구 삭제하려면 DELETE를 입력하세요.')!=='DELETE')return;trashStorage.splice(i,1);selectedDetail=null;markAsChanged();refreshMemoArchiveList();renderDetailPanel();}
+    
+function openSettings(){
+  document.getElementById('settings-modal').showModal();
+}
+
+function openResetModal(){
+  document.getElementById('settings-modal').close();
+  document.getElementById('reset-confirm-text').value='';
+  document.getElementById('reset-scope').value='local';
+  document.getElementById('reset-modal').showModal();
+}
+
+function emptyTrash(){
+  const trashedDirs=S.directories.filter(d=>d.deletedAt).length;
+  const trashedTasks=S.tasks.filter(t=>t.deletedAt).length;
+  const total=trashedDirs+trashedTasks;
+
+  if(total===0){
+    alert('휴지통이 이미 비어 있습니다.');
+    return;
+  }
+
+  if(!confirm(`휴지통의 ${total}개 항목을 영구 삭제할까요?\n이 작업은 되돌릴 수 없습니다.`)) return;
+
+  const deletedDirectoryIds=new Set(S.directories.filter(d=>d.deletedAt).map(d=>d.id));
+  S.directories=S.directories.filter(d=>!d.deletedAt);
+  S.tasks=S.tasks.filter(t=>!t.deletedAt && !deletedDirectoryIds.has(t.directoryId));
+
+  sel={type:null,id:null};
+  changed();
+  render();
+  document.getElementById('settings-modal').close();
+  alert('휴지통을 비웠습니다.');
+}
+
+async function performSafeReset(){
+  const phrase=document.getElementById('reset-confirm-text').value.trim();
+  const scope=document.getElementById('reset-scope').value;
+
+  if(phrase!=='전체 데이터 삭제'){
+    alert('확인 문구가 일치하지 않습니다.');
+    return;
+  }
+
+  // Always create a backup before any reset.
+  backup();
+
+  if(scope==='local'){
+    localStorage.removeItem('jd8backup');
+    localStorage.removeItem('jd_workspace_backup');
+    document.getElementById('reset-modal').close();
+    alert('현재 기기의 로컬 백업만 삭제했습니다.\n클라우드 데이터는 그대로 유지됩니다.');
+    return;
+  }
+
+  if(!confirm('클라우드 데이터까지 모두 삭제합니다.\n정말 계속할까요?')) return;
+
+  try{
+    stat('전체 데이터 초기화 중');
+    const {error}=await db.from('user_dashboards').delete().eq('user_id',USER);
+    if(error) throw error;
+
+    localStorage.removeItem('jd8backup');
+    localStorage.removeItem('jd_workspace_backup');
+
+    S=migrate({});
+    sel={type:null,id:null};
+    dirty=false;
+    lastLoaded=null;
+
+    document.getElementById('reset-modal').close();
+    render();
+    last.innerText='마지막 저장: -';
+    stat('전체 데이터 초기화 완료');
+    alert('클라우드와 현재 기기의 데이터를 초기화했습니다.\n자동 백업 파일은 다운로드 폴더에 저장되어 있습니다.');
+  }catch(e){
+    stat('초기화 실패');
+    alert('초기화에 실패했습니다.\n'+(e.message||e));
+  }
+}
+
+function exportExcel(){const wb=XLSX.utils.book_new(),groups=[],tasks=[];document.querySelectorAll('#task-panel-body .task-group').forEach(g=>{groups.push({directory_id:g.id,directory_name:g.querySelector('.title-edit').value});g.querySelectorAll('.todo-item').forEach(t=>tasks.push({task_id:t.id,directory_id:g.id,directory_name:g.querySelector('.title-edit').value,title:t.querySelector('input[type=text]').value,memo:memoStorage[t.id]||'',completed:t.querySelector('input[type=checkbox]').checked}))});XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(groups),'Directories');XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(tasks),'Tasks');XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet([{googleCalendarUrl}]),'Settings');XLSX.writeFile(wb,'JD_Workspace_'+new Date().toISOString().slice(0,10)+'.xlsx');}
+    function importExcel(e){const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=x=>{try{const wb=XLSX.read(x.target.result,{type:'array'}),dirs=XLSX.utils.sheet_to_json(wb.Sheets.Directories||{}),tasks=XLSX.utils.sheet_to_json(wb.Sheets.Tasks||{}),settings=XLSX.utils.sheet_to_json(wb.Sheets.Settings||{})[0]||{};if(!dirs.length&&!tasks.length)throw Error('필수 시트가 없습니다.');const merge=confirm('확인: 현재 데이터와 병합\n취소: 현재 데이터를 Excel 데이터로 교체');if(!merge){document.getElementById('task-panel-body').innerHTML='';memoStorage={};}const map={};dirs.forEach(d=>{addNewTaskGroup(d.directory_name||'새 디렉터리',[]);const g=[...document.querySelectorAll('.task-group')].at(-1);map[d.directory_id]=g.id;g.querySelector('.todo-item')?.remove();});tasks.forEach(t=>{let gid=map[t.directory_id];if(!gid){addNewTaskGroup(t.directory_name||'미분류',[]);const g=[...document.querySelectorAll('.task-group')].at(-1);gid=g.id;g.querySelector('.todo-item')?.remove();map[t.directory_id]=gid;}addTodoItem(gid,t.title||'',String(t.completed).toLowerCase()==='true'||t.completed===1,t.task_id||null);const tid=t.task_id||[...document.querySelectorAll('#todo-container-'+gid+' .todo-item')].at(-1).id;memoStorage[tid]=t.memo||'';});if(settings.googleCalendarUrl)googleCalendarUrl=settings.googleCalendarUrl;markAsChanged();refreshMemoArchiveList();renderDetailPanel();alert('Excel 불러오기가 완료되었습니다.');}catch(err){alert('Excel 파일 오류: '+err.message)}};r.readAsArrayBuffer(f);e.target.value='';}
+    function escapeHtml(str) { return String(str || '').replace(/[&<>"]/g, s => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[s])); }
+  </script>
+</body>
+</html>
