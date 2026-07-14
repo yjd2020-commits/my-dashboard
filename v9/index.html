@@ -1,1 +1,118 @@
-test
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>JD Workspace v9.1</title>
+  <link rel="stylesheet" href="styles.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <script defer src="storage.js"></script>
+  <script defer src="calendar.js"></script>
+  <script defer src="excel.js"></script>
+  <script defer src="app.js"></script>
+</head>
+<body>
+<header class="topbar">
+  <div>
+    <h1>JD Workspace v9.1</h1>
+    <div id="last-save" class="muted">마지막 저장: -</div>
+  </div>
+  <div class="toolbar">
+    <button class="btn primary" id="save-now">저장</button>
+    <button class="btn" id="load-now">최신 불러오기</button>
+    <button class="btn" id="excel-export">Excel 내보내기</button>
+    <button class="btn" id="excel-import-btn">Excel 불러오기</button>
+    <input id="excel-import" type="file" accept=".xlsx,.xls" hidden>
+    <button class="btn" id="json-backup">JSON 백업</button>
+    <span id="sync-status" class="status">대기</span>
+  </div>
+</header>
+
+<main class="layout">
+  <section class="panel calendar-panel">
+    <div class="panel-head">
+      <div>
+        <div class="panel-title">일정</div>
+        <div class="muted">Google Calendar</div>
+      </div>
+      <div class="row">
+        <button class="chip" id="cal-add">추가</button>
+        <button class="chip" id="cal-edit">수정</button>
+        <button class="chip" id="cal-settings">설정</button>
+      </div>
+    </div>
+    <iframe id="calendar-frame" title="Google Calendar"></iframe>
+  </section>
+
+  <section class="panel archive-panel">
+    <div class="panel-head">
+      <div>
+        <div class="panel-title">업무 아카이브</div>
+        <div class="muted">프로젝트 · To-Do · 기록 · ☆를 눌러 Urgent 지정</div>
+      </div>
+      <button class="btn success" id="new-project">+ 프로젝트</button>
+    </div>
+    <div class="panel-body">
+      <div class="search-row">
+        <input id="search" type="search" placeholder="프로젝트와 메모 검색">
+        <button class="btn" id="new-task">+ 업무</button>
+      </div>
+      <div class="tabs">
+        <button class="tab active" data-view="active">진행 중</button>
+        <button class="tab" data-view="completedTasks">완료 업무</button>
+        <button class="tab" data-view="completedProjects">완료 프로젝트</button>
+        <button class="tab" data-view="trash">휴지통</button>
+      </div>
+      <div id="archive-list"></div>
+    </div>
+  </section>
+
+  <section class="panel detail-panel">
+    <div class="panel-head">
+      <div>
+        <div class="panel-title">상세 내용</div>
+        <div class="muted">선택 전에는 Urgent 프로젝트 표시</div>
+      </div>
+      <div class="row">
+        <button class="chip hidden" id="edit-item">수정</button>
+        <button class="chip active hidden" id="save-edit">저장</button>
+        <button class="chip hidden" id="cancel-edit">취소</button>
+      </div>
+    </div>
+    <div id="detail" class="panel-body"></div>
+  </section>
+</main>
+
+<dialog id="project-dialog">
+  <form method="dialog" class="dialog-card" id="project-form">
+    <h3>새 프로젝트</h3>
+    <label>그룹
+      <select id="project-group">
+        <option>회사</option><option>KIA</option><option>자문</option>
+        <option>대학</option><option>Five Senses</option><option>UIA</option>
+        <option>개인</option><option>기타</option>
+      </select>
+    </label>
+    <label>프로젝트명<input id="project-title" required></label>
+    <div class="dialog-actions">
+      <button class="btn" value="cancel">취소</button>
+      <button class="btn primary" value="default" id="create-project">생성</button>
+    </div>
+  </form>
+</dialog>
+
+<dialog id="task-dialog">
+  <form method="dialog" class="dialog-card" id="task-form">
+    <h3>새 업무</h3>
+    <label>프로젝트<select id="task-project"></select></label>
+    <label>제목<input id="task-title" required></label>
+    <label>메모<textarea id="task-memo"></textarea></label>
+    <div class="dialog-actions">
+      <button class="btn" value="cancel">취소</button>
+      <button class="btn primary" value="default" id="create-task">생성</button>
+    </div>
+  </form>
+</dialog>
+</body>
+</html>
